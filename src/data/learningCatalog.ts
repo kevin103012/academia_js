@@ -222,9 +222,144 @@ export interface AuthService {
       },
     ],
     questions: [
-      { prompt: '¿Por qué aislar localStorage dentro de src/services/storage/?', options: ['Para hacer más lento el build', 'Para desacoplar componentes React y poder cambiar a HTTP sin tocar la UI', 'Porque React prohíbe usar localStorage'], answer: 1, explanation: 'Aislar la persistencia permite intercambiar adaptadores locales y remotos por contrato.' },
+      { prompt: '¿Qué ventaja clave aporta dividir puertos y adaptadores en arquitectura limpia?', options: ['Acoplar SQL dentro del JSX', 'Cambiar almacenamiento local por API REST sin reescribir la UI', 'Ocultar errores de compilación'], answer: 1, explanation: 'La inversión de dependencias desacopla la lógica de interfaz de la infraestructura.' },
       { prompt: '¿Qué ventaja aporta TypeScript estricto con contratos compartidos en types/?', options: ['Detecta desajustes de propiedades antes de ejecutar en navegador', 'Elimina la necesidad de pruebas', 'Convierte CSS en JavaScript'], answer: 0, explanation: 'El chequeo estático valida modelos de dominio entre servicios y UI.' },
       { prompt: '¿Dónde debe aplicarse la validación de permisos de forma definitiva?', options: ['Solo ocultando botones en React', 'En el backend para cada endpoint y recurso', 'En el título del documento HTML'], answer: 1, explanation: 'El backend es la frontera de seguridad real; el frontend solo refleja estado y UX.' },
+    ],
+  },
+  fpga: {
+    lessons: [
+      {
+        id: 'fpga-entity',
+        title: 'Entidades, puertos y lógica combinacional VHDL',
+        summary: 'Define entradas std_logic y síntesis concurrente en tarjetas FPGA.',
+        minutes: 8,
+        reading: [
+          'En VHDL, una entidad declara los pines físicos (std_logic) hacia LEDs o pulsadores, mientras que la arquitectura describe el circuito combinacional concurrente.',
+          'Al sintetizar sobre FPGA, las expresiones booleanas como Q <= A AND B se mapean directamente en tablas de consulta (LUTs).',
+        ],
+        keySteps: [
+          'Declara pines de entrada y salida en la entidad VHDL.',
+          'Describe asignaciones concurrentes en la arquitectura.',
+          'Verifica el estado lógico con entradas A=1 y B=1 en el simulador.',
+        ],
+        formulaOrCode: `entity and_gate is
+  port (A, B : in std_logic; Q : out std_logic);
+end entity;
+Q <= A and B;`,
+        exercise: 'Valida la compuerta AND combinacional en el simulador lógico de la derecha.',
+        labKind: 'circuit',
+        labGoal: 'Activa AND con A = 1 y B = 1 para comprobar síntesis de nivel alto.',
+        labHint: 'Una compuerta AND solo sintetiza salida 1 cuando ambos pines de entrada reciben tensión alta.',
+      },
+      {
+        id: 'fpga-nand',
+        title: 'Universalidad NAND y reducción de LUTs',
+        summary: 'Construye inversores y sumadores mínimos usando compuertas NAND.',
+        minutes: 7,
+        reading: [
+          'Las compuertas NAND permiten construir cualquier función lógica booleana con menos transistores CMOS.',
+          'En diseños embebidos, reducir niveles lógicos disminuye el retardo de propagación entre flip-flops.',
+        ],
+        keySteps: [
+          'Evalúa el complemento lógico de la multiplicación binaria.',
+          'Comprueba cuándo se apaga la salida NAND.',
+        ],
+        formulaOrCode: `Q <= not (A and B);  -- Retardo típico ~1.8 ns en LUT4`,
+        exercise: 'Comprueba la condición de apagado de NAND en el simulador.',
+        labKind: 'circuit',
+        labGoal: 'Selecciona NAND con A = 1 y B = 1 para validar salida en 0.',
+        labHint: 'Cambia la compuerta a NAND y asegúrate de tener ambas entradas en 1.',
+      },
+    ],
+    questions: [
+      { prompt: '¿En qué bloque de hardware FPGA se mapean las funciones booleanas?', options: ['Look-Up Tables (LUTs)', 'Discos NVMe', 'Servidores DNS'], answer: 0, explanation: 'Las LUTs almacenan las tablas de verdad configurables en el tejido FPGA.' },
+      { prompt: '¿Qué salida entrega Q <= not (A and B) cuando A=1 y B=1?', options: ['1 lógico', '0 lógico', 'Alta impedancia'], answer: 1, explanation: 'NAND niega el resultado alto de AND, entregando 0.' },
+    ],
+  },
+  calculus: {
+    lessons: [
+      {
+        id: 'calc-grad',
+        title: 'Gradientes, jacobianos y descenso iterativo',
+        summary: 'Calcula derivadas parciales para minimizar funciones de pérdida en modelos de IA.',
+        minutes: 9,
+        reading: [
+          'El vector gradiente apunta en la dirección de máximo crecimiento de f(x, y). Al multiplicar por -η (learning rate), descendemos hacia el mínimo de error.',
+          'En redes neuronales y regresión lineal normalizada, resolver sistemas por eliminación gaussiana complementa la optimización iterativa.',
+        ],
+        keySteps: [
+          'Plantea las condiciones de optimalidad ∇f(x) = 0 como sistema lineal.',
+          'Resuelve el sistema resultante por reducción de Gauss-Jordan.',
+        ],
+        formulaOrCode: `∇L(w) = [ ∂L/∂w₁, ∂L/∂w₂ ]ᵀ = 0
+w_next = w - η · ∇L(w)   (η = learning rate)`,
+        exercise: 'Resuelve el sistema lineal de optimalidad [2 1 | 5; 4 3 | 11] en el laboratorio matricial.',
+        labKind: 'matrix',
+        labGoal: 'Reduce el sistema a I₂ para obtener el punto crítico [x₁=2, x₂=1].',
+        labHint: 'Aplica R₂ ← R₂ - 2·R₁, luego normaliza R₁ y limpia hacia arriba.',
+      },
+    ],
+    questions: [
+      { prompt: '¿Hacia dónde apunta el negativo del gradiente (-∇f)?', options: ['Dirección de máximo descenso local', 'Dirección ortogonal fija al eje X', 'Siempre hacia infinito'], answer: 0, explanation: 'Por eso el descenso de gradiente actualiza los pesos restando η·∇L.' },
+    ],
+  },
+  nestjs: {
+    lessons: [
+      {
+        id: 'nest-hex',
+        title: 'Puertos, casos de uso y adaptadores PostgreSQL en NestJS',
+        summary: 'Organiza módulos NestJS con inyección de dependencias sobre interfaces puras.',
+        minutes: 8,
+        reading: [
+          'En Arquitectura Hexagonal con NestJS, los casos de uso dependen de tokens de interfaz (puertos) y nunca de implementaciones directas de TypeORM o Prisma.',
+          'Esto permite ejecutar pruebas unitarias en milisegundos con repositorios en memoria y conectar PostgreSQL en producción.',
+        ],
+        keySteps: [
+          'Define entidades y puertos en domain/ sin decoradores HTTP.',
+          'Implementa repositorios e integraciones externas en infrastructure/.',
+          'Conecta controladores e inyección de dependencias desde el módulo.',
+        ],
+        formulaOrCode: `@Injectable()
+export class EnrollCourseUseCase {
+  constructor(@Inject(COURSE_REPO) private readonly repo: CourseRepository) {}
+}`,
+        exercise: 'Valida las responsabilidades de capas en el validador de arquitectura.',
+        labKind: 'architecture',
+        labGoal: 'Alinea contratos, servicios I/O y capa reactiva sin fugas.',
+        labHint: 'Asegúrate de mantener contratos puros en types/ y el acceso a datos en services/.',
+      },
+    ],
+    questions: [
+      { prompt: '¿Qué logra inyectar un puerto en lugar de un repositorio TypeORM concreto?', options: ['Desacoplar lógica de negocio de la base de datos', 'Duplicar consultas SQL', 'Eliminar el tipado'], answer: 0, explanation: 'Permite intercambiar adaptadores y testear casos de uso aislados.' },
+    ],
+  },
+  'algorithms-cpp': {
+    lessons: [
+      {
+        id: 'alg-big-o',
+        title: 'Grafos, Dijkstra y análisis asintótico en C++',
+        summary: 'Modela listas de adyacencia con std::priority_queue en O((V + E) log V).',
+        minutes: 9,
+        reading: [
+          'Representar grafos dispersos mediante vector<vector<pair<int,int>>> reduce la memoria de O(V²) a O(V + E).',
+          'Con un min-heap (std::priority_queue), el algoritmo de Dijkstra encuentra caminos mínimos sin pesos negativos en tiempo cuasi-lineal.',
+        ],
+        keySteps: [
+          'Inicializa distancias en INF y origen en 0.',
+          'Relaja aristas salientes manteniendo invariante de menor costo.',
+          'Verifica separación modular en el laboratorio de contratos.',
+        ],
+        formulaOrCode: `priority_queue<pair<int,int>, vector<pair<int,int>>, greater<>> pq;
+// Complejidad: O((V + E) log V)`,
+        exercise: 'Comprueba la separación limpia entre modelos, algoritmos/servicios y estado.',
+        labKind: 'architecture',
+        labGoal: 'Valida la separación de responsabilidades antes de pasar al reto de grafos.',
+        labHint: 'Mantén estructuras de datos puras separadas de la capa de I/O.',
+      },
+    ],
+    questions: [
+      { prompt: '¿Qué estructura optimiza la extracción del siguiente nodo mínimo en Dijkstra?', options: ['Pila LIFO simple', 'Min-Heap / priority_queue', 'Lista enlazada sin ordenar'], answer: 1, explanation: 'Un min-heap extrae el vértice mínimo en O(log V).' },
     ],
   },
 }

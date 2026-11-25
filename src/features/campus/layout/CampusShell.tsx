@@ -10,13 +10,15 @@ import { ActivityView } from '../../activities/ActivityView'
 import { AiControlView } from '../../ai/AiControlView'
 import { AttendanceView } from '../../community/AttendanceView'
 import { CalendarView } from '../../community/CalendarView'
+import { CommunityView } from '../../community/CommunityView'
 import { NoticesView } from '../../community/NoticesView'
 import Learning from '../../learning/Learning'
 import { ManageView } from '../../management/ManageView'
 import { ReportsView } from '../../management/ReportsView'
+import { SettingsView } from '../../settings/SettingsView'
 import Tutor from '../../tutor/Tutor'
 import { HomeView } from '../home/HomeView'
-import { homeView, navTreeByRole, viewsByRole, type AiSectionId, type CampusPageId } from '../navigation'
+import { homeView, navTreeByRole, viewsByRole, type AiSectionId, type CampusPageId, type CommunitySectionId } from '../navigation'
 import '../../../styles/portal.css'
 
 interface CampusShellProps {
@@ -28,10 +30,12 @@ export function CampusShell({ notice, onNotify }: CampusShellProps) {
   const { user, signOut } = useAuth()
   const { workspace, loaded, storageError, commit } = useWorkspace()
   const navigateRouter = useNavigate()
-  const [page, setPage] = useState<CampusPageId>('home')
+  const [page, setPage] = useState<CampusPageId>(() =>
+    window.location.hash === '#configuracion' ? 'settings' : 'home',
+  )
   const [courseSelection, setCourseSelection] = useState<string>()
   const [menuOpen, setMenuOpen] = useState(false)
-  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({ 'ai-group': true })
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({ 'ai-group': true, 'community-group': true })
   const mainRef = useRef<HTMLElement>(null)
   const menuRef = useRef<HTMLButtonElement>(null)
 
@@ -73,6 +77,14 @@ export function CampusShell({ notice, onNotify }: CampusShellProps) {
     if (next.startsWith('ai-')) {
       setOpenGroups((prev) => ({ ...prev, 'ai-group': true }))
     }
+    if (next.startsWith('community-')) {
+      setOpenGroups((prev) => ({ ...prev, 'community-group': true }))
+    }
+    if (next === 'settings') {
+      window.history.replaceState(null, '', '#configuracion')
+    } else if (window.location.hash) {
+      window.history.replaceState(null, '', window.location.pathname)
+    }
     window.scrollTo({ top: 0, behavior: 'instant' })
     mainRef.current?.focus({ preventScroll: true })
   }
@@ -111,6 +123,16 @@ export function CampusShell({ notice, onNotify }: CampusShellProps) {
     />
   )
 
+  const renderCommunitySection = (section: CommunitySectionId) => (
+    <CommunityView
+      user={user}
+      section={section}
+      onNavigateSection={(next) => navigate(next)}
+      commit={commit}
+      notify={(message) => onNotify(message)}
+    />
+  )
+
   const content = {
     home: <HomeView user={user} workspace={workspace} navigate={navigate} />,
     learning: (
@@ -133,8 +155,11 @@ export function CampusShell({ notice, onNotify }: CampusShellProps) {
     'ai-neural': renderAiSection('ai-neural'),
     'ai-trained': renderAiSection('ai-trained'),
     'ai-access': renderAiSection('ai-access'),
+    'community-discover': renderCommunitySection('community-discover'),
+    'community-mine': renderCommunitySection('community-mine'),
     reports: <ReportsView workspace={workspace} />,
     tutor: <Tutor user={user} />,
+    settings: <SettingsView notify={(message) => onNotify(message)} />,
   }[currentView.id]
 
   return (

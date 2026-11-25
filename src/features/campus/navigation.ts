@@ -6,16 +6,21 @@ import {
   ChartNoAxesColumnIncreasing,
   ClipboardCheck,
   ClipboardList,
+  Compass,
   LayoutDashboard,
   Megaphone,
+  MessageSquare,
+  Settings,
   Settings2,
   ShieldCheck,
   Sparkles,
+  UsersRound,
   type LucideIcon,
 } from 'lucide-react'
 import type { DemoRole } from '../../types/auth'
 
 export type AiSectionId = 'ai-neural' | 'ai-trained' | 'ai-access'
+export type CommunitySectionId = 'community-discover' | 'community-mine'
 
 export type CampusPageId =
   | 'home'
@@ -26,8 +31,10 @@ export type CampusPageId =
   | 'notices'
   | 'manage'
   | AiSectionId
+  | CommunitySectionId
   | 'reports'
   | 'tutor'
+  | 'settings'
 
 export interface CampusViewItem {
   id: CampusPageId
@@ -59,6 +66,7 @@ const noticesView: CampusViewItem = { id: 'notices', label: 'Avisos', icon: Mega
 const reportsView: CampusViewItem = { id: 'reports', label: 'Reportes', icon: ChartNoAxesColumnIncreasing }
 const manageView: CampusViewItem = { id: 'manage', label: 'Administración', icon: Settings2 }
 const tutorView: CampusViewItem = { id: 'tutor', label: 'Tutor de estudio', icon: Sparkles }
+const settingsView: CampusViewItem = { id: 'settings', label: 'Configuración', icon: Settings }
 
 const aiNeuralView: CampusViewItem = {
   id: 'ai-neural',
@@ -88,22 +96,62 @@ const aiGroup: CampusNavGroup = {
   children: [aiNeuralView, aiTrainedView, aiAccessView],
 }
 
+const communityDiscoverView: CampusViewItem = {
+  id: 'community-discover',
+  label: 'Buscar comunidad',
+  groupLabel: 'Comunidad',
+  icon: Compass,
+}
+
+const communityMineView: CampusViewItem = {
+  id: 'community-mine',
+  label: 'Mi comunidad',
+  groupLabel: 'Comunidad',
+  icon: MessageSquare,
+}
+
+const communityGroup: CampusNavGroup = {
+  id: 'community-group',
+  label: 'Comunidad',
+  icon: UsersRound,
+  children: [communityDiscoverView, communityMineView],
+}
+
 const itemNode = (item: CampusViewItem): CampusNavNode => ({ kind: 'item', item })
 const groupNode = (group: CampusNavGroup): CampusNavNode => ({ kind: 'group', group })
 
 export const navTreeByRole: Record<DemoRole, CampusNavNode[]> = {
-  student: [homeView, learningView, activitiesView, tutorView, calendarView, noticesView].map(itemNode),
+  student: [
+    itemNode(homeView),
+    itemNode(learningView),
+    itemNode(activitiesView),
+    itemNode(tutorView),
+    groupNode(communityGroup),
+    itemNode(calendarView),
+    itemNode(noticesView),
+    itemNode(settingsView),
+  ],
   teacher: [
-    homeView,
-    { ...manageView, label: 'Gestión de cursos' },
-    activitiesView,
-    attendanceView,
-    calendarView,
-    noticesView,
-  ].map(itemNode),
-  coordinator: [homeView, reportsView, learningView, activitiesView, attendanceView, calendarView, noticesView].map(
-    itemNode,
-  ),
+    itemNode(homeView),
+    itemNode({ ...manageView, label: 'Gestión de cursos' }),
+    itemNode(activitiesView),
+    itemNode(attendanceView),
+    groupNode(communityGroup),
+    itemNode(calendarView),
+    itemNode(noticesView),
+    itemNode(settingsView),
+  ],
+  coordinator: [
+    itemNode(homeView),
+    itemNode(reportsView),
+    itemNode(learningView),
+    itemNode(activitiesView),
+    itemNode(attendanceView),
+    groupNode(communityGroup),
+    itemNode(calendarView),
+    itemNode(noticesView),
+    itemNode(settingsView),
+  ],
   admin: [
     itemNode(homeView),
     itemNode(manageView),
@@ -112,8 +160,10 @@ export const navTreeByRole: Record<DemoRole, CampusNavNode[]> = {
     itemNode(learningView),
     itemNode(activitiesView),
     itemNode(attendanceView),
+    groupNode(communityGroup),
     itemNode(calendarView),
     itemNode(noticesView),
+    itemNode(settingsView),
   ],
 }
 

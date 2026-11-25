@@ -97,6 +97,35 @@
 .learn-search input::placeholder { color: var(--learn-muted) }
 .p-shell .learn-search input:focus-visible { outline: none }
 
+.learn-category-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-bottom: 12px;
+}
+
+.learn-category-pill {
+  min-height: 34px;
+  padding: 4px 12px;
+  font-size: 0.79rem;
+  font-weight: 680;
+}
+
+.learn-course-headline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+}
+
+.learn-course-headline > strong {
+  font-family: var(--font-display, Georgia, serif);
+  font-size: 1.04rem;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
 .learn-catalog,
 .learn-syllabus,
 .learn-feedback { margin: 0; padding: 0; list-style: none }

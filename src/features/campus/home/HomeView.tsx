@@ -16,16 +16,16 @@ import {
 } from 'lucide-react'
 import { completedLessonCount, courseLessons } from '../../../services'
 import type { DemoUser } from '../../../types/auth'
-import type { Workspace } from '../../../types/workspace'
+import { courseCategories, type CourseCategoryId, type Workspace } from '../../../types/workspace'
 import { dateKey, formatDate } from '../../../utils/date'
 import type { CampusNavigate } from '../navigation'
 
-const engineeringDomains = [
-  { id: 'science', label: 'Circuitos Digitales y Hardware', area: 'Hardware · Ciclo IV', icon: Cpu },
-  { id: 'math', label: 'Álgebra Lineal Aplicada', area: 'Matemática · Ciclo III', icon: Pi },
-  { id: 'language', label: 'Frameworks y Arquitectura Web', area: 'Arquitectura · Ciclo VI', icon: Layers },
-  { id: 'algorithms', label: 'Algoritmos y Complejidad', area: 'Especialidad IA · Big-O', icon: Binary },
-] as const
+const categoryIcons: Record<CourseCategoryId, typeof Cpu> = {
+  hardware: Cpu,
+  matematica: Pi,
+  frameworks: Layers,
+  algoritmos: Binary,
+}
 
 interface HomeViewProps {
   user: DemoUser
@@ -83,8 +83,8 @@ export function HomeView({ user, workspace, navigate }: HomeViewProps) {
           <h1>Hola, {user.name.split(' ')[0]}.</h1>
           <p>
             {student
-              ? 'Retoma tu laboratorio interactivo o practica con el Tutor Socrático.'
-              : 'Consulta el avance del aula, entregas y especialidades de IA.'}
+              ? 'Retoma tu laboratorio interactivo o participa en tus grupos de Comunidad.'
+              : 'Supervisa categorías, entregas académicas y grupos de comunidad.'}
           </p>
         </div>
         <span className="p-today">
@@ -106,7 +106,7 @@ export function HomeView({ user, workspace, navigate }: HomeViewProps) {
                 ? nextLesson
                   ? `Siguiente lección: ${nextLesson.title} (${recommendedCompletedIds.length}/${recommendedLessons.length} completadas).`
                   : recommended?.description
-                : 'Supervisa entregas por calificar, progreso del grupo y modelos neuronales.'}
+                : 'Supervisa entregas por calificar, categorías de cursos y modelos neuronales.'}
             </p>
             <button
               className="p-button p-button-primary tone-accent"
@@ -164,27 +164,35 @@ export function HomeView({ user, workspace, navigate }: HomeViewProps) {
       <div className="p-dashboard-grid">
         <div className="p-card p-report">
           <div className="p-card-head">
-            <h2>Matriz de competencias</h2>
+            <h2>Avance por categoría tecnológica</h2>
             <button className="p-text-button" onClick={() => navigate('learning')}>
               Ver catálogo
             </button>
           </div>
           <div className="p-competency-list">
-            {engineeringDomains.map(({ id, label, area, icon: DomainIcon }) => {
-              const courseMatch = workspace.courses.find((course) => course.id === id)
-              const total = courseMatch ? courseLessons(courseMatch.id).length : 3
-              const done = courseMatch ? completedLessonCount(courseMatch.id, workspace.progress[courseMatch.id]) : 0
-              const pct = courseMatch ? Math.round((done / (total || 1)) * 100) : 45
+            {courseCategories.map((cat) => {
+              const Icon = categoryIcons[cat.id]
+              const inCategory = workspace.courses.filter((c) => c.category === cat.id)
+              const totals = inCategory.reduce(
+                (acc, c) => ({
+                  total: acc.total + courseLessons(c.id).length,
+                  done: acc.done + completedLessonCount(c.id, workspace.progress[c.id]),
+                }),
+                { total: 0, done: 0 },
+              )
+              const pct = totals.total > 0 ? Math.round((totals.done / totals.total) * 100) : 0
               return (
-                <div key={id} className="p-competency-item">
+                <div key={cat.id} className="p-competency-item">
                   <div className="p-competency-top">
                     <span className="p-competency-name">
-                      <DomainIcon size={15} aria-hidden="true" />
-                      <strong>{label}</strong>
+                      <Icon size={15} aria-hidden="true" />
+                      <strong>{cat.label}</strong>
                     </span>
-                    <small>{courseMatch ? `${done}/${total} lecciones` : area}</small>
+                    <small>
+                      {inCategory.length} {inCategory.length === 1 ? 'curso' : 'cursos'} · {totals.done}/{totals.total}
+                    </small>
                   </div>
-                  <progress aria-label={`Dominio en ${label}`} value={pct} max={100} />
+                  <progress aria-label={`Dominio en ${cat.label}`} value={pct} max={100} />
                 </div>
               )
             })}

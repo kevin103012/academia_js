@@ -13,7 +13,7 @@ import {
 } from 'lucide-react'
 import { completedLessonCount, courseMaterial, isOrientation, passingScore } from '../../services'
 import type { LearningEntry } from '../../types/learning'
-import type { Course } from '../../types/workspace'
+import { courseCategories, type Course } from '../../types/workspace'
 import { dateKey, formatDate } from '../../utils/date'
 import { CourseAssessment, type Attempt } from './CourseAssessment'
 import { LessonWorkbench } from './LessonWorkbench'
@@ -95,6 +95,7 @@ export function CourseDetail({
   }
 
   const totalMinutes = lessons.reduce((total, item) => total + item.minutes, 0)
+  const categoryLabel = courseCategories.find((c) => c.id === course.category)?.shortLabel
   const contentHeading =
     section === 'syllabus'
       ? 'Plan de estudio'
@@ -116,6 +117,7 @@ export function CourseDetail({
         <div>
           <h1 id="learn-course-heading">{course.name}</h1>
           <p>
+            {categoryLabel && <>{categoryLabel} · </>}
             {course.description} · {course.group} · {course.teacher}
           </p>
         </div>

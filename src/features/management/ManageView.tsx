@@ -2,7 +2,7 @@ import { BookOpen, Plus, Search, UsersRound } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { SegmentedControl } from '../../components/ui/SegmentedControl'
 import type { DemoUser } from '../../types/auth'
-import type { Commit, Course, Workspace } from '../../types/workspace'
+import { courseCategories, type Commit, type Course, type CourseCategoryId, type Workspace } from '../../types/workspace'
 import { createId } from '../../utils/id'
 import { initials } from '../../utils/text'
 
@@ -41,11 +41,13 @@ export function ManageView({ user, workspace, commit }: ManageViewProps) {
     event.preventDefault()
     const data = new FormData(event.currentTarget)
     const name = String(data.get('name') ?? '').trim()
+    const category = (String(data.get('category') ?? '') || 'frameworks') as CourseCategoryId
     const group = String(data.get('group') ?? '').trim()
     const description = String(data.get('description') ?? '').trim()
     if (!name || !group || !description) return
     const next: Course = {
       id: course?.id ?? createId(),
+      category,
       teacher: course?.teacher ?? (isAdmin ? 'Mateo Salazar' : user.name),
       color: course?.color ?? 'teal',
       name,
@@ -110,6 +112,18 @@ export function ManageView({ user, workspace, commit }: ManageViewProps) {
             {tab === 'courses' ? 'Nombre del curso' : 'Nombre completo'}
             <input required maxLength={100} name="name" defaultValue={course?.name} />
           </label>
+          {tab === 'courses' && (
+            <label>
+              Categoría académica
+              <select name="category" defaultValue={course?.category ?? 'frameworks'}>
+                {courseCategories.map((cat) => (
+                  <option key={cat.id} value={cat.id}>
+                    {cat.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           <label>
             Grupo
             <input required maxLength={90} name="group" defaultValue={course?.group ?? 'Ing. de Sistemas · Ciclo III'} />
@@ -127,27 +141,33 @@ export function ManageView({ user, workspace, commit }: ManageViewProps) {
       )}
       <div className="p-card p-roster">
         {tab === 'courses' &&
-          courses.map((item) => (
-            <div className="p-person" key={item.id}>
-              <span className={`p-kind-icon p-${item.color}`}>
-                <BookOpen size={20} />
-              </span>
-              <div className="p-list-copy">
-                <strong>{item.name}</strong>
-                <small>
-                  {item.group} · {item.teacher}
-                </small>
+          courses.map((item) => {
+            const cat = courseCategories.find((c) => c.id === item.category)
+            return (
+              <div className="p-person" key={item.id}>
+                <span className={`p-kind-icon p-${item.color}`}>
+                  <BookOpen size={20} />
+                </span>
+                <div className="p-list-copy">
+                  <strong>
+                    {item.name}{' '}
+                    {cat && <span className="p-badge tone-soft-accent">{cat.shortLabel}</span>}
+                  </strong>
+                  <small>
+                    {cat?.label ?? item.category} · {item.group} · {item.teacher}
+                  </small>
+                </div>
+                <button
+                  className="p-button p-button-short"
+                  type="button"
+                  aria-label={`Editar ${item.name}`}
+                  onClick={() => setEditing(item.id)}
+                >
+                  Editar
+                </button>
               </div>
-              <button
-                className="p-button p-button-short"
-                type="button"
-                aria-label={`Editar ${item.name}`}
-                onClick={() => setEditing(item.id)}
-              >
-                Editar
-              </button>
-            </div>
-          ))}
+            )
+          })}
         {tab === 'students' &&
           students.map((item) => (
             <div className="p-person" key={item.id}>

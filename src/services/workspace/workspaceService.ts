@@ -9,7 +9,7 @@ export interface WorkspaceService {
   save(workspace: Workspace): Promise<boolean>
 }
 
-const WORKSPACE_KEY = 'junior-sparks:workspace:v3'
+const WORKSPACE_KEY = 'junior-sparks:workspace:v4'
 
 function isValidWorkspace(candidate: Partial<Workspace> | null, defaults: Workspace): candidate is Workspace {
   if (!candidate) return false

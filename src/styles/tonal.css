@@ -36,6 +36,83 @@
   --radius-composer: 22px;
 }
 
+:root[data-palette='zafiro'] {
+  --ivory: #f1f0ec;
+  --ink: #0f2447;
+  --surf: #ff5a12;
+  --accent-fill: #d84708;
+  --accent-hover: #be3b05;
+  --accent-pressed: #9a2f04;
+  --accent-soft: color-mix(in srgb, #ff5a12 12%, var(--surface-l3));
+  --accent-soft-border: color-mix(in srgb, #ff5a12 34%, var(--surface-l3));
+  --accent-soft-ink: #b83b04;
+}
+
+:root[data-palette='porcelana'] {
+  --ivory: #f5f7fb;
+  --ink: #1e293b;
+  --surf: #7c3aed;
+  --surface-l0: #ffffff;
+  --surface-l1: #f8fafc;
+  --surface-l2: #f1f5f9;
+  --surface-l3: #ffffff;
+  --surface-l4: #eef2ff;
+  --border-tonal: #e2e8f0;
+  --border-tonal-strong: #cbd5e1;
+  --border-input: #cbd5e1;
+  --accent-fill: #6d28d9;
+  --accent-hover: #5b21b6;
+  --accent-pressed: #4c1d95;
+  --accent-soft: #f3e8ff;
+  --accent-soft-border: #ddd6fe;
+  --accent-soft-ink: #6d28d9;
+}
+
+:root[data-palette='zafiro'] .theme-dark {
+  --surface-l0: #0a1933;
+  --surface-l1: #0f2447;
+  --surface-l2: #17305b;
+  --surface-l3: #203d6e;
+  --surface-l4: #2a4b82;
+  --border-tonal: #25406e;
+  --border-tonal-strong: #35548a;
+  --text-primary: #f5f4f0;
+  --text-muted: #b6c4dc;
+  --accent-fill: #ff5a12;
+  --accent-hover: #ff7033;
+  --accent-pressed: #e04a0a;
+  --accent-ink: #09152b;
+  --accent-soft: color-mix(in srgb, #ff5a12 18%, var(--surface-l2));
+  --accent-soft-border: color-mix(in srgb, #ff5a12 36%, var(--border-tonal));
+  --accent-soft-ink: #ff9a6c;
+}
+
+:root[data-palette='porcelana'] .p-sidebar,
+:root[data-palette='porcelana'] .p-feature {
+  color-scheme: light;
+  --surface-l0: #f1f5f9;
+  --surface-l1: #f8fafc;
+  --surface-l2: #e9eef6;
+  --surface-l3: #ffffff;
+  --surface-l4: #eef2ff;
+  --border-tonal: #e2e8f0;
+  --border-tonal-strong: #cbd5e1;
+  --text-primary: #0f172a;
+  --text-muted: #475569;
+  --accent-fill: #6d28d9;
+  --accent-hover: #5b21b6;
+  --accent-pressed: #4c1d95;
+  --accent-ink: #ffffff;
+  --accent-soft: #ede9fe;
+  --accent-soft-border: #ddd6fe;
+  --accent-soft-ink: #6d28d9;
+}
+
+:root[data-palette='porcelana'] .p-feature {
+  background: #ede9fe;
+  border-color: #ddd6fe;
+}
+
 .theme-dark {
   color-scheme: dark;
   --surface-l0: var(--ink);

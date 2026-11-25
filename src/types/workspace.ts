@@ -1,7 +1,17 @@
 import type { LearningProgress } from './learning'
 
+export type CourseCategoryId = 'matematica' | 'hardware' | 'frameworks' | 'algoritmos'
+
+export const courseCategories: { id: CourseCategoryId; label: string; shortLabel: string }[] = [
+  { id: 'matematica', label: 'Matemática y Ciencia de Datos', shortLabel: 'Matemática' },
+  { id: 'hardware', label: 'Hardware y Sistemas Embebidos', shortLabel: 'Hardware' },
+  { id: 'frameworks', label: 'Frameworks y Arquitectura', shortLabel: 'Frameworks' },
+  { id: 'algoritmos', label: 'Algoritmos y Lenguajes', shortLabel: 'Algoritmos' },
+]
+
 export type Course = {
   id: string
+  category: CourseCategoryId
   name: string
   group: string
   teacher: string
