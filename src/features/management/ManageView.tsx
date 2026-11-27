@@ -5,6 +5,8 @@ import type { DemoUser } from '../../types/auth'
 import { courseCategories, type Commit, type Course, type CourseCategoryId, type Workspace } from '../../types/workspace'
 import { createId } from '../../utils/id'
 import { initials } from '../../utils/text'
+import { CourseAttendance } from './CourseAttendance'
+import { CourseEditor } from './CourseEditor'
 
 interface ManageViewProps {
   user: DemoUser
@@ -23,6 +25,8 @@ export function ManageView({ user, workspace, commit }: ManageViewProps) {
   const [tab, setTab] = useState<ManagementTab>('courses')
   const [editing, setEditing] = useState<string>()
   const [query, setQuery] = useState('')
+  const [attendanceId, setAttendanceId] = useState<string>()
+  const [contentId, setContentId] = useState<string>()
   const isAdmin = user.role === 'admin'
   const course = workspace.courses.find((item) => item.id === editing)
   const matches = (value: string) => value.toLocaleLowerCase('es').includes(query.trim().toLocaleLowerCase('es'))
@@ -45,10 +49,13 @@ export function ManageView({ user, workspace, commit }: ManageViewProps) {
     const group = String(data.get('group') ?? '').trim()
     const description = String(data.get('description') ?? '').trim()
     if (!name || !group || !description) return
+    // Solo administración puede crear cursos; el docente edita los que tiene a cargo.
+    if (!course && !isAdmin) return
     const next: Course = {
+      ...course,
       id: course?.id ?? createId(),
       category,
-      teacher: course?.teacher ?? (isAdmin ? 'Mateo Salazar' : user.name),
+      teacher: course?.teacher ?? 'Mateo Salazar',
       color: course?.color ?? 'teal',
       name,
       group,
@@ -74,6 +81,36 @@ export function ManageView({ user, workspace, commit }: ManageViewProps) {
     setQuery('')
   }
 
+  const attendanceCourse = workspace.courses.find(
+    (item) => item.id === attendanceId && (isAdmin || item.teacher === user.name),
+  )
+  if (attendanceCourse) {
+    return (
+      <CourseAttendance
+        key={attendanceCourse.id}
+        course={attendanceCourse}
+        workspace={workspace}
+        commit={commit}
+        onBack={() => setAttendanceId(undefined)}
+      />
+    )
+  }
+
+  const contentCourse = workspace.courses.find(
+    (item) => item.id === contentId && (isAdmin || item.teacher === user.name),
+  )
+  if (contentCourse) {
+    return (
+      <CourseEditor
+        key={contentCourse.id}
+        course={contentCourse}
+        workspace={workspace}
+        commit={commit}
+        onBack={() => setContentId(undefined)}
+      />
+    )
+  }
+
   return (
     <section>
       <header className="p-section-heading">
@@ -82,13 +119,15 @@ export function ManageView({ user, workspace, commit }: ManageViewProps) {
           <p>
             {isAdmin
               ? 'Mantén actualizado el catálogo y el padrón académico.'
-              : 'Organiza los cursos que tienes a cargo y sus grupos.'}
+              : 'Edita tus cursos, sus lecciones y fechas de evaluación, y registra la asistencia.'}
           </p>
         </div>
-        <button className="p-button p-button-primary" onClick={() => setEditing(editing ? undefined : 'new')}>
-          {editing ? 'Cancelar' : tab === 'courses' ? 'Crear curso' : 'Registrar estudiante'}
-          {!editing && <Plus size={17} />}
-        </button>
+        {(isAdmin || editing) && (
+          <button className="p-button p-button-primary" onClick={() => setEditing(editing ? undefined : 'new')}>
+            {editing ? 'Cancelar' : tab === 'courses' ? 'Crear curso' : 'Registrar estudiante'}
+            {!editing && <Plus size={17} />}
+          </button>
+        )}
       </header>
       <div className="p-manage-bar">
         {isAdmin && (
@@ -157,6 +196,28 @@ export function ManageView({ user, workspace, commit }: ManageViewProps) {
                     {cat?.label ?? item.category} · {item.group} · {item.teacher}
                   </small>
                 </div>
+                <button
+                  className="p-button p-button-short"
+                  type="button"
+                  aria-label={`Lecciones y fechas de ${item.name}`}
+                  onClick={() => {
+                    setEditing(undefined)
+                    setContentId(item.id)
+                  }}
+                >
+                  Lecciones
+                </button>
+                <button
+                  className="p-button p-button-short"
+                  type="button"
+                  aria-label={`Asistencia de ${item.name}`}
+                  onClick={() => {
+                    setEditing(undefined)
+                    setAttendanceId(item.id)
+                  }}
+                >
+                  Asistencia
+                </button>
                 <button
                   className="p-button p-button-short"
                   type="button"

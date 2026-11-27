@@ -1,4 +1,4 @@
-import type { LearningProgress } from './learning'
+import type { ExerciseAnswer, Lesson, LearningProgress } from './learning'
 
 export type CourseCategoryId = 'matematica' | 'hardware' | 'frameworks' | 'algoritmos'
 
@@ -17,6 +17,20 @@ export type Course = {
   teacher: string
   color: 'teal' | 'gold' | 'blue'
   description: string
+  /** Lecciones editadas por el docente; si faltan se usa el temario del catálogo. */
+  lessons?: Lesson[]
+  /** Fecha de la evaluación del curso (AAAA-MM-DD). */
+  assessmentDate?: string
+  /** Días en que se dicta clase; de aquí salen los días en que toca asistir. */
+  schedule?: ClassSchedule
+}
+
+/** Horario semanal de un curso. weekdays usa Date.getDay(): 0 = domingo … 6 = sábado. */
+export type ClassSchedule = {
+  weekdays: number[]
+  /** Primer y último día del ciclo (AAAA-MM-DD). */
+  startDate: string
+  endDate: string
 }
 
 export type Activity = {
@@ -45,18 +59,34 @@ export type Notice = {
   date: string
 }
 
+export const eventCategories = ['Clase', 'Reunión', 'Estudio', 'Evaluación', 'Entrega', 'Otro'] as const
+export type EventCategory = typeof eventCategories[number]
+
+/** private: solo su autor · invited: autor y citados · campus: todos. */
+export type EventAudience = 'private' | 'invited' | 'campus'
+
 export type CalendarEvent = {
   id: string
   title: string
   date: string
+  /** Hora de inicio (HH:mm). */
   time: string
   location: string
+  // Opcionales solo por los eventos guardados antes de estos campos (se muestran a todos).
+  endTime?: string
+  category?: EventCategory
+  audience?: EventAudience
+  createdById?: string
+  createdByName?: string
+  participantIds?: string[]
 }
 
 export const attendanceStatuses = ['Presente', 'Tardanza', 'Ausente', 'Justificada'] as const
 export type AttendanceStatus = typeof attendanceStatuses[number]
 
 export type Attendance = {
+  // Opcional solo por los registros guardados antes de separar la asistencia por curso.
+  courseId?: string
   studentId: string
   date: string
   status: AttendanceStatus
@@ -85,6 +115,8 @@ export type Workspace = {
   students: Student[]
   progress: LearningProgress
   audit: AuditRecord[]
+  // Opcional: no existe en los datos guardados antes de los ejercicios.
+  exerciseAnswers?: ExerciseAnswer[]
 }
 
 export type Commit = (action: string, update: (current: Workspace) => Workspace) => void

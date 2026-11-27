@@ -2,11 +2,12 @@ import { useEffect, useRef, useState } from 'react'
 import { Award, BookOpen, ChevronRight, Search } from 'lucide-react'
 import { SegmentedControl } from '../../components/ui/SegmentedControl'
 import { completedLessonCount, courseMaterial } from '../../services'
-import type { LearningEntry, LearningProgress } from '../../types/learning'
+import type { ExerciseAnswer, LearningEntry, LearningProgress } from '../../types/learning'
 import { courseCategories, type Course, type CourseCategoryId } from '../../types/workspace'
 import { formatDate } from '../../utils/date'
 import { normalizeSearchText } from '../../utils/text'
 import { CourseDetail } from './CourseDetail'
+import type { AnswerDraft } from './LessonContent'
 import { courseIcon } from './learningHelpers'
 import '../../styles/learning.css'
 
@@ -18,6 +19,8 @@ type LearningProps = {
   studentName: string
   initialCourse?: string
   notify: (message: string) => void
+  answers: ExerciseAnswer[]
+  onAnswer: (courseId: string, answer: AnswerDraft) => void
 }
 
 type Collection = 'catalog' | 'enrolled' | 'certificates'
@@ -37,6 +40,8 @@ export default function Learning({
   studentName,
   initialCourse,
   notify,
+  answers,
+  onAnswer,
 }: LearningProps) {
   const [selection, setSelection] = useState(() => ({ courseId: initialCourse, source: initialCourse }))
   const [collection, setCollection] = useState<Collection>('catalog')
@@ -69,6 +74,8 @@ export default function Learning({
         }}
         onProgress={(entry) => onProgress(course.id, entry)}
         notify={notify}
+        answers={answers.filter((answer) => answer.courseId === course.id)}
+        onAnswer={(answer) => onAnswer(course.id, answer)}
       />
     )
   }
@@ -190,8 +197,8 @@ export default function Learning({
         {matching.map((item) => {
           const Icon = courseIcon(item.id)
           const entry = canLearn ? progress[item.id] : undefined
-          const lessons = courseMaterial(item.id).lessons
-          const completed = completedLessonCount(item.id, entry)
+          const lessons = courseMaterial(item).lessons
+          const completed = completedLessonCount(item, entry)
           const categoryMeta = courseCategories.find((c) => c.id === item.category)
           return (
             <li key={item.id}>

@@ -8,14 +8,14 @@ import {
   Download,
   GraduationCap,
   LockKeyhole,
-  NotebookPen,
   Printer,
 } from 'lucide-react'
 import { completedLessonCount, courseMaterial, isOrientation, passingScore } from '../../services'
-import type { LearningEntry } from '../../types/learning'
+import type { ExerciseAnswer, LearningEntry } from '../../types/learning'
 import { courseCategories, type Course } from '../../types/workspace'
 import { dateKey, formatDate } from '../../utils/date'
 import { CourseAssessment, type Attempt } from './CourseAssessment'
+import { LessonContent, type AnswerDraft } from './LessonContent'
 import { LessonWorkbench } from './LessonWorkbench'
 import { certificateTitle, courseIcon, downloadCertificate } from './learningHelpers'
 
@@ -30,6 +30,8 @@ export type CourseDetailProps = {
   onBack: () => void
   onProgress: (entry: LearningEntry) => void
   notify: (message: string) => void
+  answers: ExerciseAnswer[]
+  onAnswer: (answer: AnswerDraft) => void
 }
 
 export function CourseDetail({
@@ -41,9 +43,11 @@ export function CourseDetail({
   onBack,
   onProgress,
   notify,
+  answers,
+  onAnswer,
 }: CourseDetailProps) {
-  const { lessons, questions } = courseMaterial(course.id)
-  const completed = completedLessonCount(course.id, entry)
+  const { lessons, questions } = courseMaterial(course)
+  const completed = completedLessonCount(course, entry)
   const readyForAssessment = entry.enrolled && completed === lessons.length
   const certifiedAt = canLearn ? entry.certifiedAt : undefined
   const earnedCertificate = Boolean(certifiedAt)
@@ -57,6 +61,9 @@ export function CourseDetail({
   const lessonIndex = lessons.indexOf(lesson)
   const lessonDone = entry.lessons.includes(lesson.id)
   const Icon = courseIcon(course.id)
+  const assessmentDay = course.assessmentDate
+    ? formatDate(course.assessmentDate, { day: 'numeric', month: 'long', year: 'numeric' })
+    : undefined
 
   useEffect(() => {
     heading.current?.focus()
@@ -141,7 +148,7 @@ export function CourseDetail({
       </header>
 
       {section === 'lesson' ? (
-        <div className="learn-split-workspace">
+        <div className={lesson.labKind ? 'learn-split-workspace' : 'learn-lesson-single'}>
           <div className="learn-panel learn-study">
             <h2 ref={heading} tabIndex={-1}>
               {contentHeading}
@@ -156,32 +163,12 @@ export function CourseDetail({
               )}
             </div>
 
-            <div className="learn-reading">
-              {lesson.reading.map((paragraph) => (
-                <p key={paragraph}>{paragraph}</p>
-              ))}
-
-              {lesson.keySteps && lesson.keySteps.length > 0 && (
-                <ol className="learn-key-steps">
-                  {lesson.keySteps.map((step) => (
-                    <li key={step}>{step}</li>
-                  ))}
-                </ol>
-              )}
-
-              {lesson.formulaOrCode && (
-                <pre className="learn-code-block theme-dark">
-                  <code>{lesson.formulaOrCode}</code>
-                </pre>
-              )}
-
-              <div className="learn-exercise">
-                <h3>
-                  <NotebookPen aria-hidden="true" size={16} /> Reto en el laboratorio
-                </h3>
-                <p>{lesson.exercise}</p>
-              </div>
-            </div>
+            <LessonContent
+              key={lesson.id}
+              lesson={lesson}
+              answers={answers}
+              onAnswer={canLearn && entry.enrolled ? onAnswer : undefined}
+            />
 
             <div className="learn-lesson-actions">
               <button className="learn-action learn-action-outline" type="button" onClick={() => setSection('syllabus')}>
@@ -209,16 +196,18 @@ export function CourseDetail({
             </div>
           </div>
 
-          <LessonWorkbench
-            key={lesson.id}
-            lessonId={lesson.id}
-            labKind={lesson.labKind ?? 'architecture'}
-            goal={lesson.labGoal}
-            hint={lesson.labHint}
-            canLearn={canLearn}
-            lessonDone={lessonDone}
-            onCompleteLesson={completeLesson}
-          />
+          {lesson.labKind && (
+            <LessonWorkbench
+              key={lesson.id}
+              lessonId={lesson.id}
+              labKind={lesson.labKind}
+              goal={lesson.labGoal}
+              hint={lesson.labHint}
+              canLearn={canLearn}
+              lessonDone={lessonDone}
+              onCompleteLesson={completeLesson}
+            />
+          )}
         </div>
       ) : (
         <div className="learn-detail-grid">
@@ -232,7 +221,7 @@ export function CourseDetail({
                   <BookOpen aria-hidden="true" size={16} /> {lessons.length} lecciones <Clock3 aria-hidden="true" size={16} />{' '}
                   {totalMinutes} min
                 </div>
-                {isOrientation(course.id) && (
+                {isOrientation(course.id) && !course.lessons && (
                   <p className="learn-info">
                     Este curso incluye una guía general de inducción mientras se prepara su material específico.
                   </p>
@@ -253,6 +242,11 @@ export function CourseDetail({
                           <span>
                             <strong>{item.title}</strong>
                             <span>{item.summary}</span>
+                            {!!item.sublessons?.length && (
+                              <span>
+                                {item.sublessons.length} {item.sublessons.length === 1 ? 'sublección' : 'sublecciones'}
+                              </span>
+                            )}
                           </span>
                           <span className="learn-step-time">{item.minutes} min</span>
                           {canLearn && !entry.enrolled ? (
@@ -315,6 +309,11 @@ export function CourseDetail({
             <h2>
               <GraduationCap aria-hidden="true" size={22} strokeWidth={1.6} /> {canLearn ? 'Tu recorrido' : 'Vista de curso'}
             </h2>
+            {assessmentDay && (
+              <p className="learn-exam-date">
+                Evaluación del curso: <strong>{assessmentDay}</strong>
+              </p>
+            )}
             {canLearn && entry.enrolled ? (
               <>
                 <div className="learn-prog-title">

@@ -47,8 +47,8 @@ export function ReportsView({ workspace }: { workspace: Workspace }) {
         <div className="p-card p-report">
           <h2>Avance por curso</h2>
           {workspace.courses.map((course) => {
-            const total = courseLessons(course.id).length
-            const count = completedLessonCount(course.id, workspace.progress[course.id])
+            const total = courseLessons(course).length
+            const count = completedLessonCount(course, workspace.progress[course.id])
             return (
               <div key={course.id} className="p-report-progress">
                 <span>

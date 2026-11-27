@@ -10,12 +10,16 @@ export interface CommunityService {
   buildAutoReply(groupName: string, mentorName: string, prompt: string): Promise<CommunityMessage>
 }
 
-const COMMUNITY_KEY = 'junior-sparks:community:v1'
+const COMMUNITY_KEY = 'junior-sparks:community:v2'
 
 function isValidCommunityState(value: unknown): value is CommunityState {
   if (!value || typeof value !== 'object') return false
   const candidate = value as Partial<CommunityState>
-  return Array.isArray(candidate.groups) && candidate.groups.length > 0 && typeof candidate.activeGroupId === 'string'
+  return (
+    Array.isArray(candidate.groups) &&
+    candidate.groups.every((group) => Array.isArray(group?.members) && Array.isArray(group?.messages)) &&
+    typeof candidate.activeGroupId === 'string'
+  )
 }
 
 const localCommunityService: CommunityService = {
@@ -45,6 +49,8 @@ const localCommunityService: CommunityService = {
         : `Excelente aporte en ${groupName}. Si compartes tu fragmento o caso de prueba, el grupo te ayuda a validarlo paso a paso.`
     return {
       id: `reply-${Date.now()}`,
+      authorId: `mentor:${mentorName}`,
+      createdAt: Date.now(),
       author: mentorName,
       authorRole: 'Mentor',
       initials: initials || 'MN',

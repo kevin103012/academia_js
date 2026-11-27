@@ -1,5 +1,16 @@
 import type { CommunityGroup, CommunityState } from '../types/community'
 
+const seedTime = (time: string) => Date.parse(`2026-11-20T${time}:00-05:00`)
+
+// Cuentas demo que ya pertenecían a estos grupos antes de los mensajes de ejemplo.
+const demoMembers = () => {
+  const joinedAt = Date.parse('2026-11-01T00:00:00-05:00')
+  return [
+    { userId: 'student', name: 'Valentina Ríos', joinedAt },
+    { userId: 'teacher', name: 'Mateo Salazar', joinedAt },
+  ]
+}
+
 export function createInitialCommunityState(): CommunityState {
   const groups: CommunityGroup[] = [
     {
@@ -13,10 +24,12 @@ export function createInitialCommunityState(): CommunityState {
       onlineCount: 14,
       mentorName: 'Mateo Salazar',
       pinnedNote: 'Reto semanal: diagonalizar una matriz simétrica 3×3 y graficar sus autovectores en Python.',
-      joined: true,
+      members: demoMembers(),
       messages: [
         {
           id: 'm-1',
+          authorId: 'teacher',
+          createdAt: seedTime('09:15'),
           author: 'Mateo Salazar',
           authorRole: 'Docente',
           initials: 'MS',
@@ -25,6 +38,8 @@ export function createInitialCommunityState(): CommunityState {
         },
         {
           id: 'm-2',
+          authorId: 'sofia',
+          createdAt: seedTime('09:22'),
           author: 'Sofía Mendoza',
           authorRole: 'Estudiante',
           initials: 'SM',
@@ -44,10 +59,12 @@ export function createInitialCommunityState(): CommunityState {
       onlineCount: 11,
       mentorName: 'Carlos Huamán',
       pinnedNote: 'Antes de energizar tu ESP32, valida 3.3 V / 5 V en pines GPIO y resistencia limitadora.',
-      joined: true,
+      members: demoMembers(),
       messages: [
         {
           id: 'm-3',
+          authorId: 'diego',
+          createdAt: seedTime('10:04'),
           author: 'Diego Torres',
           authorRole: 'Estudiante',
           initials: 'DT',
@@ -56,6 +73,8 @@ export function createInitialCommunityState(): CommunityState {
         },
         {
           id: 'm-4',
+          authorId: 'seed:Carlos Huamán',
+          createdAt: seedTime('10:07'),
           author: 'Carlos Huamán',
           authorRole: 'Docente',
           initials: 'CH',
@@ -75,10 +94,12 @@ export function createInitialCommunityState(): CommunityState {
       onlineCount: 19,
       mentorName: 'Sofía Alarcón',
       pinnedNote: 'Regla del canal: toda persistencia va encapsulada en src/services/, nunca directo en JSX.',
-      joined: true,
+      members: demoMembers(),
       messages: [
         {
           id: 'm-5',
+          authorId: 'seed:Sofía Alarcón',
+          createdAt: seedTime('11:30'),
           author: 'Sofía Alarcón',
           authorRole: 'Mentor',
           initials: 'SA',
@@ -98,10 +119,12 @@ export function createInitialCommunityState(): CommunityState {
       onlineCount: 9,
       mentorName: 'Carlos Huamán',
       pinnedNote: 'Sesión práctica todos los viernes 18:00: 3 problemas de caminos mínimos.',
-      joined: false,
+      members: [],
       messages: [
         {
           id: 'm-6',
+          authorId: 'seed:Carlos Huamán',
+          createdAt: seedTime('14:10'),
           author: 'Carlos Huamán',
           authorRole: 'Docente',
           initials: 'CH',
@@ -121,10 +144,12 @@ export function createInitialCommunityState(): CommunityState {
       onlineCount: 12,
       mentorName: 'Sofía Alarcón',
       pinnedNote: 'Guía de Docker Compose para levantar API NestJS + PostgreSQL 16 publicada en avisos.',
-      joined: false,
+      members: [],
       messages: [
         {
           id: 'm-7',
+          authorId: 'seed:Sofía Alarcón',
+          createdAt: seedTime('15:00'),
           author: 'Sofía Alarcón',
           authorRole: 'Mentor',
           initials: 'SA',
@@ -144,10 +169,12 @@ export function createInitialCommunityState(): CommunityState {
       onlineCount: 7,
       mentorName: 'Elena Quispe',
       pinnedNote: 'Compara curvas de Val Loss vs. Train Loss con el laboratorio neuronal de Administración.',
-      joined: false,
+      members: [],
       messages: [
         {
           id: 'm-8',
+          authorId: 'seed:Elena Quispe',
+          createdAt: seedTime('16:20'),
           author: 'Elena Quispe',
           authorRole: 'Docente',
           initials: 'EQ',

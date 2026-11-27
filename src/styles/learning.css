@@ -363,6 +363,25 @@
   align-items: start;
 }
 
+.learn-lesson-single { display: grid; grid-template-columns: minmax(0, 1fr); }
+
+.learn-exam-date { margin-top: 0.6rem !important; font-size: 0.88rem; }
+.learn-block { margin-top: 0.9rem; padding-top: 0.75rem; border-top: 1px solid var(--border-tonal); }
+.learn-block > h3, .learn-block > h4 { margin: 0 0 0.35rem; font-size: 0.95rem; font-weight: 720; }
+.learn-block p { line-height: 1.5; font-size: 0.9rem; overflow-wrap: anywhere; }
+.learn-block-text { white-space: pre-wrap; }
+.learn-video { width: 100%; aspect-ratio: 16 / 9; border: 0; border-radius: 12px; background: #000; }
+.learn-block fieldset { display: grid; gap: 0.35rem; margin: 0; padding: 0; border: 0; min-width: 0; }
+.learn-block legend { padding: 0; margin-bottom: 0.35rem; font-weight: 690; line-height: 1.4; overflow-wrap: anywhere; }
+.learn-block fieldset label { display: flex; align-items: center; gap: 0.5rem; min-height: 36px; font-size: 0.9rem; overflow-wrap: anywhere; }
+.learn-block fieldset input { flex: none; }
+.learn-block form { display: grid; gap: 0.5rem; justify-items: start; }
+.learn-block form > fieldset, .learn-block form > label { justify-self: stretch; }
+.learn-block form > label { display: grid; gap: 0.35rem; font-weight: 690; line-height: 1.4; overflow-wrap: anywhere; }
+.learn-block textarea { width: 100%; min-width: 0; resize: vertical; padding: 10px 12px; border: 1px solid var(--border-input); border-radius: 14px; background: var(--surface-l2); font-weight: 400; }
+.learn-sublesson { margin-top: 1.2rem; padding-top: 0.9rem; border-top: 2px solid var(--border-tonal-strong); }
+.learn-root .learn-sublesson > h3 { font-size: 1rem; overflow-wrap: anywhere; }
+
 .learn-workbench {
   display: grid;
   gap: 10px;

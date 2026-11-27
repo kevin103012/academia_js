@@ -17,6 +17,7 @@ import {
 import { completedLessonCount, courseLessons } from '../../../services'
 import type { DemoUser } from '../../../types/auth'
 import { courseCategories, type CourseCategoryId, type Workspace } from '../../../types/workspace'
+import { byDateAndTime, canSeeEvent, isUpcoming, timeRange } from '../../../utils/calendar'
 import { dateKey, formatDate } from '../../../utils/date'
 import type { CampusNavigate } from '../navigation'
 
@@ -40,7 +41,7 @@ export function HomeView({ user, workspace, navigate }: HomeViewProps) {
   const minutes = enrollment.reduce(
     (total, course) =>
       total +
-      courseLessons(course.id)
+      courseLessons(course)
         .filter((lesson) => workspace.progress[course.id]?.lessons.includes(lesson.id))
         .reduce((sum, lesson) => sum + lesson.minutes, 0),
     0,
@@ -51,15 +52,20 @@ export function HomeView({ user, workspace, navigate }: HomeViewProps) {
     workspace.courses.find((course) => !workspace.progress[course.id]?.enrolled) ??
     workspace.courses[0]
 
-  const recommendedLessons = recommended ? courseLessons(recommended.id) : []
+  const recommendedLessons = recommended ? courseLessons(recommended) : []
   const recommendedCompletedIds = recommended ? workspace.progress[recommended.id]?.lessons ?? [] : []
   const nextLesson =
     recommendedLessons.find((lesson) => !recommendedCompletedIds.includes(lesson.id)) ?? recommendedLessons[0]
 
-  const toReview = workspace.submissions.filter((submission) => submission.score === undefined).length
+  const toReview = workspace.submissions.filter((submission) => {
+    if (submission.score !== undefined) return false
+    if (user.role !== 'teacher') return true
+    const courseId = workspace.activities.find((activity) => activity.id === submission.activityId)?.courseId
+    return workspace.courses.some((course) => course.id === courseId && course.teacher === user.name)
+  }).length
   const nextEvent = workspace.events
-    .filter((event) => event.date >= dateKey())
-    .sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time))[0]
+    .filter((event) => canSeeEvent(event, user.id) && isUpcoming(event))
+    .sort(byDateAndTime)[0]
   const recent = workspace.audit.filter((item) => !student || item.actor === user.name).slice(0, 3)
 
   const stats = student
@@ -137,7 +143,7 @@ export function HomeView({ user, workspace, navigate }: HomeViewProps) {
               </div>
               <h3>{nextEvent.title}</h3>
               <p>
-                {nextEvent.time} · {nextEvent.location}
+                {timeRange(nextEvent)} · {nextEvent.location}
               </p>
             </>
           ) : (
@@ -175,8 +181,8 @@ export function HomeView({ user, workspace, navigate }: HomeViewProps) {
               const inCategory = workspace.courses.filter((c) => c.category === cat.id)
               const totals = inCategory.reduce(
                 (acc, c) => ({
-                  total: acc.total + courseLessons(c.id).length,
-                  done: acc.done + completedLessonCount(c.id, workspace.progress[c.id]),
+                  total: acc.total + courseLessons(c).length,
+                  done: acc.done + completedLessonCount(c, workspace.progress[c.id]),
                 }),
                 { total: 0, done: 0 },
               )

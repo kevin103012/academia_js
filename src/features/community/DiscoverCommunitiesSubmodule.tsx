@@ -1,10 +1,13 @@
 import { useState } from 'react'
 import { LogOut, MessageSquare, Search, UserPlus, Users } from 'lucide-react'
+import { isManager, isMember } from '../../services'
+import type { DemoUser } from '../../types/auth'
 import type { CommunityGroup } from '../../types/community'
 import { courseCategories, type CourseCategoryId } from '../../types/workspace'
 import { normalizeSearchText } from '../../utils/text'
 
 interface DiscoverCommunitiesSubmoduleProps {
+  user: DemoUser
   groups: CommunityGroup[]
   onJoinGroup: (groupId: string) => void
   onLeaveGroup: (groupId: string) => void
@@ -12,6 +15,7 @@ interface DiscoverCommunitiesSubmoduleProps {
 }
 
 export function DiscoverCommunitiesSubmodule({
+  user,
   groups,
   onJoinGroup,
   onLeaveGroup,
@@ -24,7 +28,7 @@ export function DiscoverCommunitiesSubmodule({
   const normalized = normalizeSearchText(query.trim())
   const filtered = groups.filter((group) => {
     const matchesCat = categoryFilter === 'all' || group.category === categoryFilter
-    const matchesAvail = !onlyAvailable || !group.joined
+    const matchesAvail = !onlyAvailable || !isMember(group, user.id)
     const matchesQuery =
       !normalized ||
       normalizeSearchText(`${group.name} ${group.description} ${group.tags.join(' ')} ${group.categoryLabel}`).includes(
@@ -106,6 +110,8 @@ export function DiscoverCommunitiesSubmodule({
                   <span className="p-badge tone-soft-accent">
                     {courseCategories.find((c) => c.id === group.category)?.shortLabel ?? group.categoryLabel}
                   </span>
+                  {group.period && <span className="p-badge">Curso · {group.period}</span>}
+                  {isManager(group, user) && <span className="p-badge">Administras</span>}
                   <span className="comm-online">
                     <i aria-hidden="true" /> {group.onlineCount} en línea
                   </span>
@@ -128,7 +134,7 @@ export function DiscoverCommunitiesSubmodule({
                   <span>Mentor: {group.mentorName}</span>
                 </div>
                 <div className="comm-card-actions" style={{ marginTop: 10 }}>
-                  {group.joined ? (
+                  {isMember(group, user.id) ? (
                     <>
                       <button
                         type="button"
@@ -137,13 +143,15 @@ export function DiscoverCommunitiesSubmodule({
                       >
                         <MessageSquare size={15} aria-hidden="true" /> Ir al chat
                       </button>
-                      <button
-                        type="button"
-                        className="p-button p-button-short tone-pill"
-                        onClick={() => onLeaveGroup(group.id)}
-                      >
-                        <LogOut size={14} aria-hidden="true" /> Salir
-                      </button>
+                      {!isManager(group, user) && (
+                        <button
+                          type="button"
+                          className="p-button p-button-short tone-pill"
+                          onClick={() => onLeaveGroup(group.id)}
+                        >
+                          <LogOut size={14} aria-hidden="true" /> Salir
+                        </button>
+                      )}
                     </>
                   ) : (
                     <button

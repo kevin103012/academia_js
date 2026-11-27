@@ -1,9 +1,13 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
-import { Compass, LogOut, Pin, Send, Users } from 'lucide-react'
-import type { CommunityGroup } from '../../types/community'
+import { Compass, LogOut, Pin, Send, Settings, Users } from 'lucide-react'
+import { isManager, isMember, visibleMessages } from '../../services'
+import type { DemoUser } from '../../types/auth'
+import type { CommunityGroup, GroupDetails } from '../../types/community'
 import { courseCategories } from '../../types/workspace'
+import { GroupAdminPanel } from './GroupAdminPanel'
 
 interface MyCommunitiesSubmoduleProps {
+  user: DemoUser
   groups: CommunityGroup[]
   activeGroupId: string
   sending: boolean
@@ -11,6 +15,9 @@ interface MyCommunitiesSubmoduleProps {
   onSendMessage: (groupId: string, text: string) => void
   onLeaveGroup: (groupId: string) => void
   onOpenDiscover: () => void
+  onEditGroup: (groupId: string, details: GroupDetails) => void
+  onRemoveMember: (groupId: string, memberId: string) => void
+  onDeleteGroup: (groupId: string) => void
 }
 
 const quickTemplates = [
@@ -36,6 +43,7 @@ function renderMessageBody(text: string) {
 }
 
 export function MyCommunitiesSubmodule({
+  user,
   groups,
   activeGroupId,
   sending,
@@ -43,16 +51,28 @@ export function MyCommunitiesSubmodule({
   onSendMessage,
   onLeaveGroup,
   onOpenDiscover,
+  onEditGroup,
+  onRemoveMember,
+  onDeleteGroup,
 }: MyCommunitiesSubmoduleProps) {
-  const [draft, setDraft] = useState('')
+  // Un borrador por grupo, para no enviar un texto al chat equivocado.
+  const [drafts, setDrafts] = useState<Record<string, string>>({})
+  const [managingId, setManagingId] = useState<string>()
   const feedRef = useRef<HTMLDivElement>(null)
-  const joinedGroups = groups.filter((group) => group.joined)
+  const joinedGroups = groups.filter((group) => isMember(group, user.id))
   const activeGroup = joinedGroups.find((g) => g.id === activeGroupId) ?? joinedGroups[0]
+  const messages = activeGroup ? visibleMessages(activeGroup, user.id) : []
+  const draft = activeGroup ? drafts[activeGroup.id] ?? '' : ''
+  const manages = activeGroup ? isManager(activeGroup, user) : false
+
+  function setDraft(value: string) {
+    if (activeGroup) setDrafts((current) => ({ ...current, [activeGroup.id]: value }))
+  }
 
   useEffect(() => {
     const el = feedRef.current
     if (el) el.scrollTop = el.scrollHeight
-  }, [activeGroup?.id, activeGroup?.messages.length])
+  }, [activeGroup?.id, messages.length])
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -87,7 +107,7 @@ export function MyCommunitiesSubmodule({
         <div className="comm-group-list">
           {joinedGroups.map((group) => {
             const catShort = courseCategories.find((c) => c.id === group.category)?.shortLabel ?? group.categoryLabel
-            const lastMsg = group.messages.at(-1)
+            const lastMsg = visibleMessages(group, user.id).at(-1)
             const isCurrent = activeGroup?.id === group.id
             return (
               <button
@@ -124,23 +144,48 @@ export function MyCommunitiesSubmodule({
                 <span>Mentor: {activeGroup.mentorName}</span>
               </div>
             </div>
-            <button
-              type="button"
-              className="p-button p-button-short tone-danger"
-              onClick={() => onLeaveGroup(activeGroup.id)}
-            >
-              <LogOut size={14} aria-hidden="true" /> Salir del grupo
-            </button>
+            {manages ? (
+              <button
+                type="button"
+                className="p-button p-button-short tone-pill"
+                aria-expanded={managingId === activeGroup.id}
+                onClick={() => setManagingId(managingId === activeGroup.id ? undefined : activeGroup.id)}
+              >
+                <Settings size={14} aria-hidden="true" /> Administrar
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="p-button p-button-short tone-danger"
+                onClick={() => onLeaveGroup(activeGroup.id)}
+              >
+                <LogOut size={14} aria-hidden="true" /> Salir del grupo
+              </button>
+            )}
           </header>
 
-          <div className="comm-pinned">
-            <Pin size={14} aria-hidden="true" />
-            <span>{activeGroup.pinnedNote}</span>
-          </div>
+          {manages && managingId === activeGroup.id && (
+            <GroupAdminPanel
+              key={activeGroup.id}
+              group={activeGroup}
+              userId={user.id}
+              onEdit={(details) => onEditGroup(activeGroup.id, details)}
+              onRemoveMember={(memberId) => onRemoveMember(activeGroup.id, memberId)}
+              onDelete={() => onDeleteGroup(activeGroup.id)}
+            />
+          )}
+
+          {activeGroup.pinnedNote && (
+            <div className="comm-pinned">
+              <Pin size={14} aria-hidden="true" />
+              <span>{activeGroup.pinnedNote}</span>
+            </div>
+          )}
 
           <div className="comm-feed" ref={feedRef} role="log" aria-label="Mensajes del grupo">
-            {activeGroup.messages.map((msg) => (
-              <article className="comm-msg" key={msg.id} data-own={msg.isOwn ? 'true' : undefined}>
+            {messages.length === 0 && <p className="p-empty">Aquí verás los mensajes enviados desde tu ingreso.</p>}
+            {messages.map((msg) => (
+              <article className="comm-msg" key={msg.id} data-own={msg.authorId === user.id ? 'true' : undefined}>
                 <span className="p-avatar" aria-hidden="true">
                   {msg.initials}
                 </span>
@@ -163,7 +208,7 @@ export function MyCommunitiesSubmodule({
                   key={tpl.label}
                   type="button"
                   className="comm-chip tone-pill"
-                  onClick={() => setDraft((prev) => (prev ? `${prev} ${tpl.insert}` : tpl.insert.trim()))}
+                  onClick={() => setDraft(draft ? `${draft} ${tpl.insert}` : tpl.insert.trim())}
                 >
                   {tpl.label}
                 </button>

@@ -1,20 +1,29 @@
 import { env } from '../../config/env'
 import { materials, orientationMaterial, passingScore } from '../../data/learningCatalog'
 import type { CourseMaterial, LearningEntry } from '../../types/learning'
+import type { Course } from '../../types/workspace'
 import { apiClient } from '../http/apiClient'
 
 export { passingScore }
 
-export function courseMaterial(courseId: string): CourseMaterial {
+type CourseContent = Pick<Course, 'id' | 'lessons'>
+
+function catalogMaterial(courseId: string): CourseMaterial {
   return Object.hasOwn(materials, courseId) ? materials[courseId] : orientationMaterial
 }
 
-export function courseLessons(courseId: string) {
-  return courseMaterial(courseId).lessons
+/** Temario vigente: las lecciones del docente sustituyen a las del catálogo. */
+export function courseMaterial(course: CourseContent): CourseMaterial {
+  const base = catalogMaterial(course.id)
+  return course.lessons?.length ? { ...base, lessons: course.lessons } : base
 }
 
-export function completedLessonCount(courseId: string, entry?: LearningEntry) {
-  return courseLessons(courseId).filter((lesson) => entry?.lessons.includes(lesson.id)).length
+export function courseLessons(course: CourseContent) {
+  return courseMaterial(course).lessons
+}
+
+export function completedLessonCount(course: CourseContent, entry?: LearningEntry) {
+  return courseLessons(course).filter((lesson) => entry?.lessons.includes(lesson.id)).length
 }
 
 export function isOrientation(courseId: string) {
@@ -27,7 +36,7 @@ export interface LearningService {
 
 const localLearningService: LearningService = {
   async getCourseMaterial(courseId) {
-    return courseMaterial(courseId)
+    return catalogMaterial(courseId)
   },
 }
 

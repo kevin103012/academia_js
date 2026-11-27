@@ -1,0 +1,118 @@
+/* Editor del curso: lista de lecciones y formulario de lección. Usa las variables del tema de la web. */
+
+/* ---------- Lista de lecciones ---------- */
+.ce-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--p-line);
+}
+.ce-head h2 { margin: 0; }
+.ce-head small { display: block; margin-top: 2px; color: var(--p-muted); font-size: .8rem; }
+.ce-head .p-button { display: inline-flex; align-items: center; gap: 6px; }
+
+.ce-list { margin: 0; padding: 0; list-style: none; }
+.ce-row { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--p-line); }
+.ce-row:last-child { border-bottom: 0; padding-bottom: 2px; }
+.ce-row .p-list-copy { flex: 1 1 auto; min-width: 0; }
+.ce-num {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--border-tonal);
+  border-radius: 50%;
+  background: var(--surface-l2);
+  color: var(--text-muted);
+  font-size: .82rem;
+  font-weight: 720;
+}
+.ce-actions { flex: none; display: flex; align-items: center; gap: 6px; }
+.ce-actions .p-button { display: inline-flex; align-items: center; gap: 6px; }
+.ce-icon { display: inline-grid; place-items: center; min-width: 34px; padding: 4px; }
+
+/* ---------- Formulario de lección ---------- */
+.le-form { gap: 0; }
+.le-section { display: grid; gap: 13px; padding: 20px 0; border-top: 1px solid var(--p-line); }
+.le-form > .le-section:first-child { padding-top: 0; border-top: 0; }
+.le-head h2 { margin: 0; }
+.le-head p { margin: 2px 0 0; }
+
+.le-grid { display: grid; grid-template-columns: minmax(0, 1fr) 170px; gap: 12px; }
+.le-grid-even { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+.le-help { font-size: .78rem; font-weight: 400; color: var(--p-muted); }
+.le-count { justify-self: end; font-size: .74rem; font-weight: 400; color: var(--p-muted); }
+
+/* Bloques de contenido y sublecciones. */
+.le-block {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--border-tonal-strong);
+  border-radius: 16px;
+  background: var(--surface-l1);
+}
+.le-block-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.le-kind { display: inline-flex; align-items: center; gap: 7px; font-size: .86rem; font-weight: 720; }
+.le-tools { display: flex; gap: 6px; }
+
+.le-add {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px dashed var(--border-tonal-strong);
+  border-radius: 16px;
+}
+.le-add-label { font-size: .8rem; font-weight: 650; color: var(--p-muted); }
+.le-add .p-button, .le-inline-button { display: inline-flex; align-items: center; gap: 6px; }
+
+/* Apartados opcionales plegables. */
+.le-more { margin-top: 4px; border: 1px solid var(--border-tonal-strong); border-radius: 16px; }
+.le-form > .le-more { margin: 20px 0 0; }
+.le-more > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px 14px;
+  font-size: .9rem;
+  font-weight: 720;
+  cursor: pointer;
+  list-style: none;
+}
+.le-more > summary::-webkit-details-marker { display: none; }
+.le-more > summary::after { content: '+'; margin-inline-start: auto; font-size: 1.1rem; color: var(--p-muted); }
+.le-more[open] > summary::after { content: '−'; }
+.le-more > summary small { font-size: .74rem; font-weight: 400; color: var(--p-muted); }
+.le-more > summary:focus-visible { outline: 2px solid var(--border-focus); outline-offset: -2px; border-radius: 16px; }
+.le-more-body { display: grid; gap: 13px; padding: 0 14px 14px; }
+
+/* Barra de acciones: siempre a la vista al final de un formulario largo. */
+.le-bar {
+  position: sticky;
+  bottom: 0;
+  z-index: 3;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 20px;
+  padding: 12px 0 2px;
+  border-top: 1px solid var(--p-line);
+  background: var(--surface-l1);
+}
+.le-dirty { margin-inline-start: auto; font-size: .8rem; color: var(--p-muted); }
+
+@media (max-width: 640px) {
+  .ce-row { flex-wrap: wrap; }
+  .ce-actions { width: 100%; justify-content: flex-end; }
+  .le-grid, .le-grid-even { grid-template-columns: minmax(0, 1fr); }
+}

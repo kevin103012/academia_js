@@ -3,17 +3,20 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { LoadingMark } from '../../../components/ui/LoadingMark'
 import { useAuth } from '../../../hooks/useAuth'
+import { useUnreadMessages } from '../../../hooks/useUnreadMessages'
 import { useWorkspace } from '../../../hooks/useWorkspace'
 import { paths } from '../../../routes/paths'
 import type { LearningEntry } from '../../../types/learning'
+import { dateKey } from '../../../utils/date'
 import { ActivityView } from '../../activities/ActivityView'
 import { AiControlView } from '../../ai/AiControlView'
-import { AttendanceView } from '../../community/AttendanceView'
 import { CalendarView } from '../../community/CalendarView'
 import { CommunityView } from '../../community/CommunityView'
 import { NoticesView } from '../../community/NoticesView'
 import Learning from '../../learning/Learning'
+import type { AnswerDraft } from '../../learning/LessonContent'
 import { ManageView } from '../../management/ManageView'
+import { MessagesView } from '../../messages/MessagesView'
 import { ReportsView } from '../../management/ReportsView'
 import { SettingsView } from '../../settings/SettingsView'
 import Tutor from '../../tutor/Tutor'
@@ -38,6 +41,7 @@ export function CampusShell({ notice, onNotify }: CampusShellProps) {
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({ 'ai-group': true, 'community-group': true })
   const mainRef = useRef<HTMLElement>(null)
   const menuRef = useRef<HTMLButtonElement>(null)
+  const unreadMessages = useUnreadMessages(user?.id)
 
   useEffect(() => {
     if (!notice) return
@@ -113,6 +117,21 @@ export function CampusShell({ notice, onNotify }: CampusShellProps) {
     }))
   }
 
+  function saveAnswer(courseId: string, draft: AnswerDraft) {
+    if (!user || user.role !== 'student') return
+    const name = workspace.courses.find((course) => course.id === courseId)?.name ?? 'un curso'
+    const next = { ...draft, courseId, studentId: user.id, studentName: user.name, answeredAt: dateKey() }
+    commit(`Respondió un ejercicio en ${name}`, (current) => ({
+      ...current,
+      exerciseAnswers: [
+        ...(current.exerciseAnswers ?? []).filter(
+          (item) => !(item.courseId === courseId && item.blockId === next.blockId && item.studentId === next.studentId),
+        ),
+        next,
+      ],
+    }))
+  }
+
   const sharedProps = { user, workspace, commit }
   const renderAiSection = (section: AiSectionId) => (
     <AiControlView
@@ -126,6 +145,7 @@ export function CampusShell({ notice, onNotify }: CampusShellProps) {
   const renderCommunitySection = (section: CommunitySectionId) => (
     <CommunityView
       user={user}
+      courses={workspace.courses}
       section={section}
       onNavigateSection={(next) => navigate(next)}
       commit={commit}
@@ -145,13 +165,15 @@ export function CampusShell({ notice, onNotify }: CampusShellProps) {
         studentName={user.name}
         initialCourse={courseSelection}
         notify={(message) => onNotify(message)}
+        answers={(workspace.exerciseAnswers ?? []).filter((answer) => answer.studentId === user.id)}
+        onAnswer={saveAnswer}
       />
     ),
     activities: <ActivityView {...sharedProps} />,
-    attendance: <AttendanceView {...sharedProps} />,
     calendar: <CalendarView {...sharedProps} />,
     notices: <NoticesView {...sharedProps} />,
     manage: <ManageView {...sharedProps} />,
+    messages: <MessagesView user={user} workspace={workspace} />,
     'ai-neural': renderAiSection('ai-neural'),
     'ai-trained': renderAiSection('ai-trained'),
     'ai-access': renderAiSection('ai-access'),
@@ -189,6 +211,12 @@ export function CampusShell({ notice, onNotify }: CampusShellProps) {
                 >
                   <Icon size={19} strokeWidth={1.8} aria-hidden="true" />
                   <span>{label}</span>
+                  {id === 'messages' && unreadMessages > 0 && (
+                    <span className="p-badge tone-soft-accent p-nav-badge">
+                      {unreadMessages > 99 ? '99+' : unreadMessages}
+                      <span className="p-sr-only"> mensajes sin leer</span>
+                    </span>
+                  )}
                 </button>
               )
             }
