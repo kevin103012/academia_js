@@ -1,0 +1,11 @@
+.cc-form { width: min(100%, 48rem); margin-block: 1rem; }
+.cc-pair { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 1rem; }
+.cc-form fieldset { min-width: 0; border: 1px solid var(--border-tonal); border-radius: .75rem; padding: .8rem; }
+.cc-days, .cc-actions { display: flex; flex-wrap: wrap; gap: .75rem; }
+.cc-form .cc-days label { display: inline-flex; align-items: center; flex-direction: row; gap: .35rem; }
+.cc-form .cc-days input { width: 1rem; min-height: 1rem; height: 1rem; }
+.cc-form header p,.cc-overview p { color: var(--text-muted); }
+.cc-overview { padding: 1.25rem; margin-block: 1rem; }
+.cc-overview h3 { margin: 1rem 0 .25rem; }
+.cc-overview li { margin-block: .45rem; }
+@media(max-width: 38rem) { .cc-pair { grid-template-columns: 1fr; } }
