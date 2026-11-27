@@ -1,6 +1,12 @@
-import { createContext, useCallback, useEffect, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useState, type ReactNode } from 'react'
+import { AuthContext } from '../hooks/useAuth'
 import { authService } from '../services'
-import type { DemoUser } from '../types/auth'
+import type {
+  AccessRequestSubmission,
+  DemoUser,
+  SignInResult,
+  SubmitAccessRequestResult,
+} from '../types/auth'
 
 export type AuthStatus = 'loading' | 'ready'
 
@@ -8,10 +14,10 @@ export interface AuthContextValue {
   user: DemoUser | null
   status: AuthStatus
   signIn: (email: string, password: string) => Promise<DemoUser | null>
+  signInDetailed: (email: string, password: string) => Promise<SignInResult>
+  submitAccessRequest: (payload: AccessRequestSubmission) => Promise<SubmitAccessRequestResult>
   signOut: () => Promise<void>
 }
-
-export const AuthContext = createContext<AuthContextValue | null>(null)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<DemoUser | null>(null)
@@ -19,7 +25,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let active = true
-    authService.getSession()
+    authService
+      .getSession()
       .then((session) => {
         if (!active) return
         setUser(session)
@@ -30,15 +37,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(null)
         setStatus('ready')
       })
-    return () => { active = false }
+    return () => {
+      active = false
+    }
   }, [])
 
-  const signIn = useCallback(async (email: string, password: string) => {
-    const authenticated = await authService.signIn(email, password)
-    if (authenticated) {
-      setUser(authenticated)
+  const signInDetailed = useCallback(async (email: string, password: string) => {
+    const result = await authService.signInDetailed(email, password)
+    if (result.status === 'authenticated') {
+      setUser(result.user)
     }
-    return authenticated
+    return result
+  }, [])
+
+  const signIn = useCallback(
+    async (email: string, password: string) => {
+      const result = await signInDetailed(email, password)
+      return result.status === 'authenticated' ? result.user : null
+    },
+    [signInDetailed],
+  )
+
+  const submitAccessRequest = useCallback(async (payload: AccessRequestSubmission) => {
+    return authService.submitAccessRequest(payload)
   }, [])
 
   const signOut = useCallback(async () => {
@@ -47,7 +68,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   return (
-    <AuthContext.Provider value={{ user, status, signIn, signOut }}>
+    <AuthContext.Provider value={{ user, status, signIn, signInDetailed, submitAccessRequest, signOut }}>
       {children}
     </AuthContext.Provider>
   )

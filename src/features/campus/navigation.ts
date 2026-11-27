@@ -4,11 +4,11 @@ import {
   BrainCircuit,
   CalendarDays,
   ChartNoAxesColumnIncreasing,
-  ClipboardCheck,
   ClipboardList,
   Compass,
   LayoutDashboard,
   Megaphone,
+  Mail,
   MessageSquare,
   Settings,
   Settings2,
@@ -26,8 +26,8 @@ export type CampusPageId =
   | 'home'
   | 'learning'
   | 'activities'
-  | 'attendance'
   | 'calendar'
+  | 'messages'
   | 'notices'
   | 'manage'
   | AiSectionId
@@ -60,8 +60,8 @@ export type CampusNavigate = (page: CampusPageId, courseId?: string) => void
 export const homeView: CampusViewItem = { id: 'home', label: 'Resumen', icon: LayoutDashboard }
 const learningView: CampusViewItem = { id: 'learning', label: 'Cursos', icon: BookOpen }
 const activitiesView: CampusViewItem = { id: 'activities', label: 'Actividades', icon: ClipboardList }
-const attendanceView: CampusViewItem = { id: 'attendance', label: 'Asistencia', icon: ClipboardCheck }
 const calendarView: CampusViewItem = { id: 'calendar', label: 'Calendario', icon: CalendarDays }
+const messagesView: CampusViewItem = { id: 'messages', label: 'Mensajería', icon: Mail }
 const noticesView: CampusViewItem = { id: 'notices', label: 'Avisos', icon: Megaphone }
 const reportsView: CampusViewItem = { id: 'reports', label: 'Reportes', icon: ChartNoAxesColumnIncreasing }
 const manageView: CampusViewItem = { id: 'manage', label: 'Administración', icon: Settings2 }
@@ -127,27 +127,32 @@ export const navTreeByRole: Record<DemoRole, CampusNavNode[]> = {
     itemNode(activitiesView),
     itemNode(tutorView),
     groupNode(communityGroup),
+    itemNode(messagesView),
     itemNode(calendarView),
     itemNode(noticesView),
     itemNode(settingsView),
   ],
   teacher: [
     itemNode(homeView),
+    itemNode(learningView),
     itemNode({ ...manageView, label: 'Gestión de cursos' }),
     itemNode(activitiesView),
-    itemNode(attendanceView),
+    itemNode(tutorView),
     groupNode(communityGroup),
+    itemNode(messagesView),
     itemNode(calendarView),
     itemNode(noticesView),
     itemNode(settingsView),
   ],
   coordinator: [
     itemNode(homeView),
+    itemNode({ ...manageView, label: 'Gestión de cursos' }),
     itemNode(reportsView),
     itemNode(learningView),
     itemNode(activitiesView),
-    itemNode(attendanceView),
+    itemNode(tutorView),
     groupNode(communityGroup),
+    itemNode(messagesView),
     itemNode(calendarView),
     itemNode(noticesView),
     itemNode(settingsView),
@@ -156,11 +161,12 @@ export const navTreeByRole: Record<DemoRole, CampusNavNode[]> = {
     itemNode(homeView),
     itemNode(manageView),
     groupNode(aiGroup),
+    itemNode(tutorView),
     itemNode(reportsView),
     itemNode(learningView),
     itemNode(activitiesView),
-    itemNode(attendanceView),
     groupNode(communityGroup),
+    itemNode(messagesView),
     itemNode(calendarView),
     itemNode(noticesView),
     itemNode(settingsView),

@@ -403,3 +403,7 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+.comm-root .comm-grid { gap: 20px; }
+.comm-root .comm-card { border-radius: 0; border-width: 0 0 1px; box-shadow: none; background: transparent; }
+.comm-root .comm-card-actions { flex-wrap: wrap; }

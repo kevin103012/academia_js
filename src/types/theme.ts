@@ -1,9 +1,26 @@
-export type CampusPaletteId = 'original' | 'zafiro' | 'porcelana'
+export type BuiltInPaletteId = 'original' | 'zafiro' | 'porcelana' | 'gta-vi' | 'minecraft' | 'tokyo-night'
+export type CampusPaletteId = BuiltInPaletteId | (string & {})
+
+export type CampusLanguageId = 'es' | 'en' | 'pt'
+
+export interface CampusLanguageOption {
+  id: CampusLanguageId
+  label: string
+  nativeName: string
+  region: string
+}
+
+export const campusLanguages: CampusLanguageOption[] = [
+  { id: 'es', label: 'Español', nativeName: 'Español (Latinoamérica)', region: 'Idioma principal de cursos y comunidad' },
+  { id: 'en', label: 'English', nativeName: 'English (International)', region: 'Technical terms and interface labels' },
+  { id: 'pt', label: 'Português', nativeName: 'Português (Brasil)', region: 'Compatível com intercâmbio acadêmico' },
+]
 
 export interface CampusPaletteOption {
   id: CampusPaletteId
   name: string
   description: string
+  isCustom?: boolean
   preview: {
     sidebar: string
     sidebarMuted: string
@@ -16,6 +33,16 @@ export interface CampusPaletteOption {
     border: string
     accent: string
   }
+}
+
+export interface CustomThemeRecord {
+  id: string
+  name: string
+  description: string
+  ivory: string
+  ink: string
+  surf: string
+  isDarkCanvas?: boolean
 }
 
 export const campusPalettes: CampusPaletteOption[] = [
@@ -68,6 +95,57 @@ export const campusPalettes: CampusPaletteOption[] = [
       cardBg: '#ffffff',
       border: '#dfe5f0',
       accent: '#7c3aed',
+    },
+  },
+  {
+    id: 'gta-vi',
+    name: 'GTA VI Vice',
+    description: 'Ocaso neón magenta, púrpura y cian',
+    preview: {
+      sidebar: '#1b102c',
+      sidebarMuted: '#8d6bb8',
+      canvas: '#f9eff7',
+      topbar: '#fff7fc',
+      heroBg: '#23133b',
+      heroLine: '#ffe3f6',
+      heroSub: '#b894d6',
+      cardBg: '#ffffff',
+      border: '#ead3e9',
+      accent: '#ff2e93',
+    },
+  },
+  {
+    id: 'minecraft',
+    name: 'Minecraft Voxel',
+    description: 'Piedra musgo, roble y esmeralda',
+    preview: {
+      sidebar: '#23201b',
+      sidebarMuted: '#787166',
+      canvas: '#edf2e8',
+      topbar: '#f6f9f2',
+      heroBg: '#273524',
+      heroLine: '#f2f7ec',
+      heroSub: '#8ca183',
+      cardBg: '#f9fbf6',
+      border: '#ccd8c1',
+      accent: '#2fb84d',
+    },
+  },
+  {
+    id: 'tokyo-night',
+    name: 'Tokyo Night',
+    description: 'Pizarra nocturna, azul neón y lavanda',
+    preview: {
+      sidebar: '#16161e',
+      sidebarMuted: '#565f89',
+      canvas: '#1a1b26',
+      topbar: '#1f2335',
+      heroBg: '#24283b',
+      heroLine: '#c0caf5',
+      heroSub: '#7aa2f7',
+      cardBg: '#1f2335',
+      border: '#2f3549',
+      accent: '#7aa2f7',
     },
   },
 ]

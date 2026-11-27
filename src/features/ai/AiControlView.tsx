@@ -2,15 +2,21 @@ import { useEffect, useRef, useState } from 'react'
 import { Sparkles } from 'lucide-react'
 import { LoadingMark } from '../../components/ui/LoadingMark'
 import { aiDomains, buildNeuronMask, createInitialAiState } from '../../data/aiSeed'
+import { trainingSourceFor } from '../../data/aiTrainingSources'
 import { aiService, computeNextEpoch } from '../../services'
+import { rolesForModel } from '../../services/tutor/tutorService'
 import type {
   AiControlState,
   AiDomainId,
   AiGuardrailsConfig,
+  AiOutputFormat,
+  AiTrainingSource,
   AiTrainedModel,
+  NeuronLayerId,
   TrainingHyperparams,
 } from '../../types/ai'
 import type { Commit } from '../../types/workspace'
+import type { DemoRole } from '../../types/auth'
 import { dateKey } from '../../utils/date'
 import { createId } from '../../utils/id'
 import type { AiSectionId } from '../campus/navigation'
@@ -30,12 +36,11 @@ const sectionMeta: Record<AiSectionId, { title: string; subtitle: string }> = {
   'ai-neural': {
     title: 'Entrenamiento neuronal',
     subtitle:
-      'Configura la especialidad de ingeniería, enciende o apaga neuronas por capa y entrena el modelo por épocas.',
+      'Selecciona datos de entrada y formato de respuesta. El laboratorio simula la propagación por capas y sus métricas.',
   },
   'ai-trained': {
     title: 'Modelos entrenados',
-    subtitle:
-      'Consulta los modelos especializados guardados, recárgalos en el laboratorio o valida el dataset académico.',
+    subtitle: 'Revisa las configuraciones guardadas del laboratorio y controla su disponibilidad en el tutor.',
   },
   'ai-access': {
     title: 'Acceso alumnos y docentes',
@@ -44,10 +49,16 @@ const sectionMeta: Record<AiSectionId, { title: string; subtitle: string }> = {
   },
 }
 
+const trainingLayers: NeuronLayerId[] = ['input', 'hidden1', 'hidden2', 'output']
+
 export function AiControlView({ section, onNavigateSection, commit, notify }: AiControlViewProps) {
   const [state, setState] = useState<AiControlState>(createInitialAiState)
   const [loaded, setLoaded] = useState(false)
   const shouldPersistRef = useRef(false)
+  const saveQueue = useRef<Promise<unknown>>(Promise.resolve())
+  const [storageError, setStorageError] = useState('')
+  const [layerIndex, setLayerIndex] = useState(0)
+  const [singleEpoch, setSingleEpoch] = useState(false)
 
   useEffect(() => {
     let active = true
@@ -60,7 +71,10 @@ export function AiControlView({ section, onNavigateSection, commit, notify }: Ai
         setLoaded(true)
       })
       .catch(() => {
-        if (active) setLoaded(true)
+        if (active) {
+          setStorageError('No se pudo cargar el motor de IA. Vuelve a abrir el módulo para reintentar.')
+          setLoaded(true)
+        }
       })
     return () => {
       active = false
@@ -69,12 +83,26 @@ export function AiControlView({ section, onNavigateSection, commit, notify }: Ai
 
   useEffect(() => {
     if (!loaded || !shouldPersistRef.current) return
-    void aiService.save(state)
+    let active = true
+    saveQueue.current = saveQueue.current.catch(() => undefined).then(async () => {
+      try {
+        if (!(await aiService.save(state))) throw new Error()
+        if (active) setStorageError('')
+      } catch {
+        if (active) setStorageError('No se pudo sincronizar el cambio del motor de IA.')
+      }
+    })
+    return () => { active = false }
   }, [state, loaded])
 
   useEffect(() => {
     if (!loaded || state.status !== 'training') return
-    const timer = window.setInterval(() => {
+    const timer = window.setTimeout(() => {
+      if (layerIndex < trainingLayers.length - 1) {
+        setLayerIndex(layerIndex + 1)
+        return
+      }
+      setLayerIndex(0)
       shouldPersistRef.current = true
       setState((current) => {
         if (current.status !== 'training') return current
@@ -82,7 +110,9 @@ export function AiControlView({ section, onNavigateSection, commit, notify }: Ai
           return { ...current, status: 'completed' }
         }
         const metric = computeNextEpoch(current)
-        const nextStatus = metric.epoch >= current.hyperparams.targetEpochs ? 'completed' : 'training'
+        const nextStatus = metric.epoch >= current.hyperparams.targetEpochs
+          ? 'completed'
+          : singleEpoch ? 'paused' : 'training'
         return {
           ...current,
           currentEpoch: metric.epoch,
@@ -90,9 +120,9 @@ export function AiControlView({ section, onNavigateSection, commit, notify }: Ai
           history: [...current.history, metric],
         }
       })
-    }, 650)
-    return () => window.clearInterval(timer)
-  }, [loaded, state.status])
+    }, 280)
+    return () => window.clearTimeout(timer)
+  }, [loaded, state.status, layerIndex, singleEpoch])
 
   function updateState(updater: (current: AiControlState) => AiControlState) {
     shouldPersistRef.current = true
@@ -110,9 +140,23 @@ export function AiControlView({ section, onNavigateSection, commit, notify }: Ai
       return {
         ...current,
         selectedDomain: domain,
+        trainingSource: undefined,
+        currentEpoch: 0,
+        history: [],
+        status: 'idle',
         draftModelName: isDefaultDraft && meta ? `${meta.defaultName}-Custom` : current.draftModelName,
       }
     })
+    setLayerIndex(0)
+  }
+
+  function handleChangeSource(trainingSource?: AiTrainingSource) {
+    setLayerIndex(0)
+    updateState((current) => ({ ...current, trainingSource, currentEpoch: 0, history: [], status: 'idle' }))
+  }
+
+  function handleChangeOutputFormat(outputFormat: AiOutputFormat) {
+    updateState((current) => ({ ...current, outputFormat }))
   }
 
   function handleChangeModelName(name: string) {
@@ -171,6 +215,7 @@ export function AiControlView({ section, onNavigateSection, commit, notify }: Ai
   }
 
   function handleStartPause() {
+    setSingleEpoch(false)
     updateState((current) => ({
       ...current,
       status: current.status === 'training' ? 'paused' : 'training',
@@ -178,19 +223,13 @@ export function AiControlView({ section, onNavigateSection, commit, notify }: Ai
   }
 
   function handleStepEpoch() {
-    updateState((current) => {
-      if (current.currentEpoch >= current.hyperparams.targetEpochs) return current
-      const metric = computeNextEpoch(current)
-      return {
-        ...current,
-        currentEpoch: metric.epoch,
-        status: metric.epoch >= current.hyperparams.targetEpochs ? 'completed' : 'paused',
-        history: [...current.history, metric],
-      }
-    })
+    setLayerIndex(0)
+    setSingleEpoch(true)
+    updateState((current) => ({ ...current, status: 'training' }))
   }
 
   function handleResetTraining() {
+    setLayerIndex(0)
     const fresh = createInitialAiState()
     updateState((current) => ({
       ...current,
@@ -208,6 +247,10 @@ export function AiControlView({ section, onNavigateSection, commit, notify }: Ai
     if (!latest || !modelName) return
     const domainMeta = aiDomains.find((item) => item.id === state.selectedDomain) ?? aiDomains[0]
     const activeNeurons = state.neurons.filter((node) => node.enabled).length
+    const source = state.trainingSource ?? trainingSourceFor(domainMeta.id)
+    const allowedRoles: DemoRole[] = domainMeta.id === 'coordination-stats'
+      ? ['coordinator', 'admin']
+      : ['student', 'teacher', 'admin']
     const nextMinor = state.models.length + 1
     const savedModel: AiTrainedModel = {
       id: createId(),
@@ -224,8 +267,14 @@ export function AiControlView({ section, onNavigateSection, commit, notify }: Ai
       valLoss: latest.valLoss,
       latencyMs: Math.max(18, Math.round(18 + activeNeurons * 1.15)),
       createdAt: dateKey(),
-      enabledForStudents: true,
-      enabledForTeachers: true,
+      enabledForStudents: allowedRoles.includes('student'),
+      enabledForTeachers: allowedRoles.includes('teacher'),
+      isActive: true,
+      allowedRoles,
+      targetArea: domainMeta.label,
+      inputDataset: source.label,
+      examples: source.examples,
+      outputFormat: state.outputFormat ?? 'explanation',
     }
     updateState((current) => ({
       ...current,
@@ -236,11 +285,16 @@ export function AiControlView({ section, onNavigateSection, commit, notify }: Ai
   }
 
   function handleLoadInTrainer(model: AiTrainedModel) {
+    setLayerIndex(0)
     updateState((current) => ({
       ...current,
       selectedDomain: model.domain,
       draftModelName: model.name,
       status: 'paused',
+      currentEpoch: 0,
+      history: [],
+      trainingSource: model.examples?.length ? { label: model.inputDataset ?? model.name, examples: model.examples } : undefined,
+      outputFormat: model.outputFormat,
       neurons: current.neurons.map((node) => ({
         ...node,
         enabled: model.neuronMask[node.id] ?? true,
@@ -250,38 +304,39 @@ export function AiControlView({ section, onNavigateSection, commit, notify }: Ai
     notify(`Topología de «${model.name}» cargada en el laboratorio.`)
   }
 
-  function handleDeleteModel(modelId: string) {
-    if (state.models.length <= 1) return
-    const target = state.models.find((item) => item.id === modelId)
+  function handleModelStatus(modelId: string) {
     updateState((current) => ({
       ...current,
-      models: current.models.filter((item) => item.id !== modelId),
+      models: current.models.map((model) =>
+        model.id === modelId ? { ...model, isActive: model.isActive === false } : model,
+      ),
     }))
-    if (target) {
-      commit(`Eliminó el modelo «${target.name}»`, (workspace) => workspace)
-      notify(`Modelo «${target.name}» eliminado.`)
-    }
   }
 
-  function handleToggleRoleAccess(modelId: string, role: 'student' | 'teacher') {
+  function handleToggleRoleAccess(modelId: string, role: DemoRole) {
     const target = state.models.find((item) => item.id === modelId)
     if (!target) return
-    const nextValue = role === 'student' ? !target.enabledForStudents : !target.enabledForTeachers
+    const allowedRoles = rolesForModel(target)
+    const nextRoles = allowedRoles.includes(role) ? allowedRoles.filter((item) => item !== role) : [...allowedRoles, role]
     updateState((current) => ({
       ...current,
       models: current.models.map((item) => {
         if (item.id !== modelId) return item
-        return role === 'student'
-          ? { ...item, enabledForStudents: nextValue }
-          : { ...item, enabledForTeachers: nextValue }
+        return {
+          ...item,
+          allowedRoles: nextRoles,
+          enabledForStudents: nextRoles.includes('student'),
+          enabledForTeachers: nextRoles.includes('teacher'),
+        }
       }),
     }))
-    const roleLabel = role === 'student' ? 'alumnos' : 'docentes'
-    commit(
-      `${nextValue ? 'Activó' : 'Apagó'} «${target.name}» para ${roleLabel}`,
-      (workspace) => workspace,
-    )
-    notify(`«${target.name}» ${nextValue ? 'activado' : 'apagado'} para ${roleLabel}.`)
+  }
+
+  function handleTargetArea(id: string, targetArea: string) {
+    updateState((current) => ({
+      ...current,
+      models: current.models.map((model) => model.id === id ? { ...model, targetArea } : model),
+    }))
   }
 
   function handleSaveConfig(nextConfig: AiGuardrailsConfig) {
@@ -290,19 +345,6 @@ export function AiControlView({ section, onNavigateSection, commit, notify }: Ai
       config: nextConfig,
     }))
     commit('Actualizó políticas globales de acceso e IA', (workspace) => workspace)
-    notify('Políticas globales de acceso e IA guardadas.')
-  }
-
-  function handleValidateDataset() {
-    updateState((current) => ({
-      ...current,
-      dataset: {
-        ...current.dataset,
-        lastVerifiedAt: dateKey(),
-      },
-    }))
-    commit('Validó la calidad del dataset de ingeniería', (workspace) => workspace)
-    notify('Dataset validado: 0 duplicados y esquema íntegro.')
   }
 
   if (!loaded) {
@@ -314,10 +356,10 @@ export function AiControlView({ section, onNavigateSection, commit, notify }: Ai
   }
 
   const activeStudentsCount = state.config.studentGlobalEnabled
-    ? state.models.filter((model) => model.enabledForStudents).length
+    ? state.models.filter((model) => model.isActive !== false && model.enabledForStudents).length
     : 0
   const activeTeachersCount = state.config.teacherGlobalEnabled
-    ? state.models.filter((model) => model.enabledForTeachers).length
+    ? state.models.filter((model) => model.isActive !== false && model.enabledForTeachers).length
     : 0
   const heading = sectionMeta[section]
 
@@ -333,10 +375,14 @@ export function AiControlView({ section, onNavigateSection, commit, notify }: Ai
           docentes
         </span>
       </header>
+      {storageError && <p className="p-warning" role="alert">{storageError}</p>}
 
       {section === 'ai-neural' && (
         <NeuralTrainingSubmodule
           state={state}
+          activeLayer={state.status === 'training' ? trainingLayers[layerIndex] : undefined}
+          onChangeSource={handleChangeSource}
+          onChangeOutputFormat={handleChangeOutputFormat}
           onChangeDomain={handleChangeDomain}
           onChangeModelName={handleChangeModelName}
           onToggleNeuron={handleToggleNeuron}
@@ -351,12 +397,11 @@ export function AiControlView({ section, onNavigateSection, commit, notify }: Ai
 
       {section === 'ai-trained' && (
         <TrainedModelsSubmodule
-          dataset={state.dataset}
           models={state.models}
-          onValidateDataset={handleValidateDataset}
           onLoadInTrainer={handleLoadInTrainer}
           onOpenAccess={() => onNavigateSection('ai-access')}
-          onDeleteModel={handleDeleteModel}
+          onToggleActive={handleModelStatus}
+          onChangeArea={handleTargetArea}
         />
       )}
 

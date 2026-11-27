@@ -1,4 +1,4 @@
-import { Binary, BookOpen, Cpu, FlaskConical, Layers, NotebookPen, Pi } from 'lucide-react'
+import { Binary, BookOpen, Cpu, Database, FlaskConical, Layers, Network, NotebookPen, Pi } from 'lucide-react'
 import { isOrientation } from '../../services'
 import type { LearningEntry } from '../../types/learning'
 import type { Course } from '../../types/workspace'
@@ -11,6 +11,8 @@ export function courseIcon(courseId: string) {
   if (courseId === 'language') return NotebookPen
   if (courseId === 'nestjs') return Layers
   if (courseId === 'algorithms-cpp') return Binary
+  if (courseId === 'redes-cyber') return Network
+  if (courseId === 'sql-cloud') return Database
   return BookOpen
 }
 

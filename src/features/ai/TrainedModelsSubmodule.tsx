@@ -1,171 +1,84 @@
 import { useState } from 'react'
-import { BrainCircuit, Database, RefreshCw, SlidersHorizontal, Trash2, Upload } from 'lucide-react'
+import { Power, SlidersHorizontal, Upload } from 'lucide-react'
 import { aiDomains } from '../../data/aiSeed'
-import type { AiDatasetSummary, AiDomainId, AiTrainedModel } from '../../types/ai'
-import { formatDate } from '../../utils/date'
+import { aiOutputFormats } from '../../data/aiTrainingSources'
+import type { AiDomainId, AiTrainedModel } from '../../types/ai'
 
 interface TrainedModelsSubmoduleProps {
-  dataset: AiDatasetSummary
   models: AiTrainedModel[]
-  onValidateDataset: () => void
   onLoadInTrainer: (model: AiTrainedModel) => void
   onOpenAccess: () => void
-  onDeleteModel: (modelId: string) => void
+  onToggleActive: (id: string) => void
+  onChangeArea: (id: string, area: string) => void
 }
 
 export function TrainedModelsSubmodule({
-  dataset,
   models,
-  onValidateDataset,
   onLoadInTrainer,
   onOpenAccess,
-  onDeleteModel,
+  onToggleActive,
+  onChangeArea,
 }: TrainedModelsSubmoduleProps) {
-  const [domainFilter, setDomainFilter] = useState<'all' | AiDomainId>('all')
-
+  const [domainFilter, setDomainFilter] = useState<AiDomainId | 'all'>('all')
   const filtered = domainFilter === 'all' ? models : models.filter((model) => model.domain === domainFilter)
 
   return (
-    <div className="ai-root">
-      <section className="p-card ai-panel" aria-labelledby="ai-trained-heading">
-        <div className="p-card-head">
+    <section className="ai-model-library" aria-label="Biblioteca de modelos">
+      <div className="p-section-heading">
+        <label className="ai-library-filter">
+          Especialidad
+          <select value={domainFilter} onChange={(event) => setDomainFilter(event.target.value as AiDomainId | 'all')}>
+            <option value="all">Todas</option>
+            {aiDomains.map((domain) => <option key={domain.id} value={domain.id}>{domain.label}</option>)}
+          </select>
+        </label>
+        <button type="button" className="p-button" onClick={onOpenAccess}>
+          <SlidersHorizontal size={16} aria-hidden="true" /> Acceso por rol
+        </button>
+      </div>
+      {filtered.map((model) => (
+        <article className="ai-library-model" key={model.id}>
           <div>
-            <h2 id="ai-trained-heading">Modelos entrenados por especialidad</h2>
-            <p className="p-meta">
-              Modelos guardados desde el laboratorio neuronal. Carga uno para reajustar sus neuronas o configura quién puede usarlo.
-            </p>
+            <div className="ai-model-title">
+              <h2>{model.name}</h2>
+              <span className="p-meta">{model.version}</span>
+            </div>
+            <p className="p-meta">{model.domainLabel} · {aiOutputFormats[model.outputFormat ?? 'explanation']}</p>
+            <details>
+              <summary>Configuración del laboratorio</summary>
+              <p className="p-meta">{model.inputDataset ?? 'Ejemplos de la especialidad'} · {model.epochsTrained} épocas simuladas</p>
+              <label className="ai-library-filter">
+                Área de destino
+                <input
+                  type="text"
+                  maxLength={64}
+                  key={model.targetArea}
+                  defaultValue={model.targetArea ?? model.domainLabel}
+                  onBlur={(event) => {
+                    const next = event.currentTarget.value.trim() || model.domainLabel
+                    event.currentTarget.value = next
+                    if (next !== (model.targetArea ?? model.domainLabel)) onChangeArea(model.id, next)
+                  }}
+                />
+              </label>
+            </details>
           </div>
-          <span className="p-badge">
-            <BrainCircuit size={14} aria-hidden="true" /> {models.length} guardados
-          </span>
-        </div>
-
-        <div className="ai-filter-row" role="group" aria-label="Filtrar modelos por especialidad">
-          <button
-            type="button"
-            className={`ai-mini-btn ${domainFilter === 'all' ? 'tone-soft-accent' : 'tone-pill'}`}
-            aria-pressed={domainFilter === 'all'}
-            onClick={() => setDomainFilter('all')}
-          >
-            Todos ({models.length})
-          </button>
-          {aiDomains.map((domain) => {
-            const count = models.filter((item) => item.domain === domain.id).length
-            return (
-              <button
-                key={domain.id}
-                type="button"
-                className={`ai-mini-btn ${domainFilter === domain.id ? 'tone-soft-accent' : 'tone-pill'}`}
-                aria-pressed={domainFilter === domain.id}
-                onClick={() => setDomainFilter(domain.id)}
-              >
-                {domain.shortLabel} ({count})
-              </button>
-            )
-          })}
-        </div>
-
-        <div className="ai-models-list">
-          {filtered.map((model) => (
-            <article className="ai-model-row" key={model.id}>
-              <div className="ai-model-info">
-                <div className="ai-model-title">
-                  <strong>{model.name}</strong>
-                  <span className="p-badge">{model.version}</span>
-                  <span className="p-badge tone-soft-accent">{model.domainLabel}</span>
-                  <span className={`p-badge ${model.enabledForStudents ? 'tone-soft-accent' : ''}`}>
-                    {model.enabledForStudents ? 'Alumnos: activo' : 'Alumnos: apagado'}
-                  </span>
-                  <span className={`p-badge ${model.enabledForTeachers ? 'tone-soft-accent' : ''}`}>
-                    {model.enabledForTeachers ? 'Docentes: activo' : 'Docentes: apagado'}
-                  </span>
-                </div>
-                <small>{model.architecture}</small>
-                <div className="ai-model-metrics">
-                  <span>
-                    Neuronas: {model.activeNeurons}/{model.totalNeurons}
-                  </span>
-                  <span>Épocas: {model.epochsTrained}</span>
-                  <span>Precisión val: {model.valAccuracy.toFixed(1)}%</span>
-                  <span>Loss val: {model.valLoss.toFixed(3)}</span>
-                  <span>Latencia: {model.latencyMs} ms</span>
-                  <span>Guardado: {formatDate(model.createdAt)}</span>
-                </div>
-              </div>
-
-              <div className="ai-model-actions">
-                <button
-                  type="button"
-                  className="ai-mini-btn tone-pill"
-                  onClick={() => onLoadInTrainer(model)}
-                >
-                  <Upload size={15} aria-hidden="true" /> Cargar en laboratorio
-                </button>
-                <button
-                  type="button"
-                  className="ai-mini-btn tone-soft-accent"
-                  onClick={onOpenAccess}
-                >
-                  <SlidersHorizontal size={15} aria-hidden="true" /> Configurar acceso
-                </button>
-                <button
-                  type="button"
-                  className="ai-mini-btn tone-danger"
-                  disabled={models.length <= 1}
-                  aria-label={`Eliminar ${model.name}`}
-                  onClick={() => onDeleteModel(model.id)}
-                >
-                  <Trash2 size={15} aria-hidden="true" /> Eliminar
-                </button>
-              </div>
-            </article>
-          ))}
-          {filtered.length === 0 && (
-            <p className="p-meta">No hay modelos guardados en esta especialidad. Entrena y guarda uno desde la primera pestaña.</p>
-          )}
-        </div>
-      </section>
-
-      <section className="p-card ai-panel" aria-labelledby="ai-dataset-heading">
-        <div className="p-card-head">
-          <div>
-            <h2 id="ai-dataset-heading">Dataset académico de ingeniería</h2>
-            <p className="p-meta">
-              Versión {dataset.version} · Verificado el {formatDate(dataset.lastVerifiedAt)}
-            </p>
+          <div className="ai-model-actions">
+            <button type="button" className="p-button p-button-short" onClick={() => onLoadInTrainer(model)}>
+              <Upload size={15} aria-hidden="true" /> Abrir en laboratorio
+            </button>
+            <button
+              type="button"
+              className={model.isActive === false ? 'ai-mini-btn tone-pill' : 'ai-mini-btn tone-soft-accent'}
+              aria-label={model.isActive === false ? 'Activar ' + model.name : 'Desactivar ' + model.name}
+              onClick={() => onToggleActive(model.id)}
+            >
+              <Power size={15} aria-hidden="true" /> {model.isActive === false ? 'Inactivo' : 'Activo'}
+            </button>
           </div>
-          <button type="button" className="ai-mini-btn tone-pill" onClick={onValidateDataset}>
-            <RefreshCw size={15} aria-hidden="true" /> Validar y reindexar dataset
-          </button>
-        </div>
-
-        <div className="ai-dataset-grid">
-          <div className="ai-kpi">
-            <span>Registros seudonimizados</span>
-            <strong>{dataset.records}</strong>
-            <small>Eventos trazables</small>
-          </div>
-          <div className="ai-kpi">
-            <span>Completitud</span>
-            <strong>{dataset.completeness.toFixed(1)}%</strong>
-            <small>Mínimo requerido: 98%</small>
-          </div>
-          <div className="ai-kpi">
-            <span>Duplicados</span>
-            <strong>{dataset.duplicates}</strong>
-            <small>Deduplicación idempotente</small>
-          </div>
-          <div className="ai-kpi">
-            <span>Corte temporal</span>
-            <strong>
-              {dataset.trainSplit}/{dataset.valSplit}/{dataset.testSplit}
-            </strong>
-            <small>
-              <Database size={12} aria-hidden="true" /> Train / Val / Test
-            </small>
-          </div>
-        </div>
-      </section>
-    </div>
+        </article>
+      ))}
+      {filtered.length === 0 && <p className="p-meta">No hay modelos guardados para esta especialidad.</p>}
+    </section>
   )
 }

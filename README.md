@@ -2,6 +2,8 @@
 
 Junior’s Sparks is a Spanish-language educational campus demo built with React, Vite, TypeScript, Tailwind CSS, and Lucide. The source material is the pair of EduMaster AI Enterprise PDFs in `docs/`.
 
+See the [current campus status](docs/ESTADO_DEL_CAMPUS.md) for implemented modules, browser verification, and Supabase activation status.
+
 ## Run locally
 
 Use Node.js 22.12 or newer.
@@ -34,11 +36,14 @@ src/
 
 ## Connecting a backend
 
-The frontend separates UI state from data persistence via typed service interfaces in `src/services/` (`AuthService`, `WorkspaceService`, `LearningService`, `TutorService`):
+The demo runs entirely in the browser. Configuration and example-based tutor responses work locally. The neural laboratory simulates the layer progression and metrics.
 
-1. Copy `.env.example` to `.env` and set `VITE_API_URL` (for example, `http://localhost:8000/api`). When `VITE_API_URL` is non-empty, `env.useMocks` becomes `false`.
-2. Implement or adjust the `http*Service` adapter for each module you migrate in `src/services/<module>/`, using `apiClient` (`src/services/http/apiClient.ts`) and keeping the exported service interface unchanged.
-3. Migrate module by module (auth, workspace, learning, tutor) without touching UI components or hooks.
+For the existing Supabase project, coordinate the following steps before enabling managed access. The migration replaces the legacy public access policies and requires real Supabase Auth sessions.
+
+1. Create or invite the first administrator in Supabase Auth. From an administrative database session, link the confirmed Auth UUID to the existing administrator profile through `profiles.auth_user_id`. Keep the existing profile ID so its references are preserved. Set the profile email to the verified Auth email. Link any other existing profiles that need to keep their records in the same way.
+2. Apply the migration in `supabase/migrations/` to the existing campus schema. It is an upgrade for that schema and expects its tables to exist.
+3. Configure Supabase Auth email delivery and allow the redirect `<campus URL>/acceso?activar=1`. Deploy the `campus-approve` Edge Function and set its `CAMPUS_SITE_URL` secret to the frontend origin.
+4. Set `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY` and `VITE_SUPABASE_MANAGED_AUTH=true` in the frontend environment, then rebuild and deploy the campus. Review one registration, approval and invite redemption using a controlled test address.
 
 ## Demo access
 
@@ -51,4 +56,4 @@ Select a profile on the sign-in page to prefill its credentials. All four accoun
 | Coordinación | `coordinacion@juniorssparks.example` |
 | Administración | `admin@juniorssparks.example` |
 
-The campus includes a student course journey, role-specific views, and a study tutor with prepared local responses. Sessions and changes are stored in the browser. Clear this site’s storage to start the demo over. A deployed copy needs a static host with a single-page-app fallback to `index.html`.
+The demo access request appears in the administration view. Approving a demo request shows a temporary credential in the same browser. Campus messages in the demo are also shared among the demo profiles on that browser. A deployed copy needs a static host with a single-page-app fallback to `index.html`.

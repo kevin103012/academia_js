@@ -2,26 +2,40 @@ import { useEffect, useRef, useState } from 'react'
 import {
   Award,
   BookOpen,
+  CalendarDays,
   Check,
   ChevronRight,
+  ClipboardCheck,
   Clock3,
   Download,
+  Edit3,
+  Film,
   GraduationCap,
+  HelpCircle,
   LockKeyhole,
   NotebookPen,
   Printer,
+  UsersRound,
 } from 'lucide-react'
-import { completedLessonCount, courseMaterial, isOrientation, passingScore } from '../../services'
-import type { LearningEntry } from '../../types/learning'
-import { courseCategories, type Course } from '../../types/workspace'
+import { completedLessonCount, courseMaterial, isOrientation, learningService, passingScore } from '../../services'
+import type { DemoUser } from '../../types/auth'
+import type { CourseMaterial, LearningEntry } from '../../types/learning'
+import { courseCategories, type Commit, type Course, type Workspace } from '../../types/workspace'
 import { dateKey, formatDate } from '../../utils/date'
+import { teachesCourse } from '../../utils/campusAccess'
 import { CourseAssessment, type Attempt } from './CourseAssessment'
+import { CourseAttendancePanel } from './CourseAttendancePanel'
+import { CourseTeacherEditor } from './CourseTeacherEditor'
+import { LessonVideoStage } from './LessonVideoStage'
 import { LessonWorkbench } from './LessonWorkbench'
 import { certificateTitle, courseIcon, downloadCertificate } from './learningHelpers'
 
-type CourseSection = 'syllabus' | 'lesson' | 'assessment' | 'certificate'
+type CourseSection = 'syllabus' | 'lesson' | 'attendance' | 'editor' | 'assessment' | 'certificate'
 
 export type CourseDetailProps = {
+  user?: DemoUser
+  workspace?: Workspace
+  commit?: Commit
   course: Course
   entry: LearningEntry
   canLearn: boolean
@@ -33,6 +47,9 @@ export type CourseDetailProps = {
 }
 
 export function CourseDetail({
+  user,
+  workspace,
+  commit,
   course,
   entry,
   canLearn,
@@ -42,7 +59,8 @@ export function CourseDetail({
   onProgress,
   notify,
 }: CourseDetailProps) {
-  const { lessons, questions } = courseMaterial(course.id)
+  const [material, setMaterial] = useState<CourseMaterial>(() => courseMaterial(course.id))
+  const { lessons, questions } = material
   const completed = completedLessonCount(course.id, entry)
   const readyForAssessment = entry.enrolled && completed === lessons.length
   const certifiedAt = canLearn ? entry.certifiedAt : undefined
@@ -50,13 +68,26 @@ export function CourseDetail({
   const [section, setSection] = useState<CourseSection>(
     startAtCertificate && earnedCertificate ? 'certificate' : 'syllabus',
   )
-  const [lessonId, setLessonId] = useState(lessons[0].id)
+  const [lessonId, setLessonId] = useState(lessons[0]?.id ?? '')
   const [attempt, setAttempt] = useState<Attempt | null>(null)
+  const [exerciseAnswers, setExerciseAnswers] = useState<Record<string, number>>({})
   const heading = useRef<HTMLHeadingElement>(null)
   const lesson = lessons.find((item) => item.id === lessonId) ?? lessons[0]
   const lessonIndex = lessons.indexOf(lesson)
   const lessonDone = entry.lessons.includes(lesson.id)
+  const videoWatched = Boolean(entry.watchedVideos?.includes(lesson.id))
   const Icon = courseIcon(course.id)
+  const canEditContent = Boolean(user && (user.role === 'admin' || teachesCourse(user, course)))
+
+  useEffect(() => {
+    let active = true
+    learningService.hydrateCourseMaterialFromSupabase(course.id).then((hydrated) => {
+      if (active) setMaterial(hydrated)
+    })
+    return () => {
+      active = false
+    }
+  }, [course.id])
 
   useEffect(() => {
     heading.current?.focus()
@@ -70,12 +101,19 @@ export function CourseDetail({
 
   function enroll() {
     if (!canLearn || entry.enrolled) return
-    onProgress({ ...entry, enrolled: true })
+    onProgress({ ...entry, enrolled: true, watchedVideos: entry.watchedVideos ?? [] })
     notify(`Matrícula registrada en ${course.name}.`)
   }
 
+  function markVideoWatched() {
+    if (!canLearn || !entry.enrolled || videoWatched) return
+    const current = entry.watchedVideos ?? []
+    onProgress({ ...entry, watchedVideos: [...current, lesson.id] })
+    notify('Ya puedes avanzar con la teoría y los ejercicios.')
+  }
+
   function completeLesson() {
-    if (!canLearn || !entry.enrolled || lessonDone) return
+    if (!canLearn || !entry.enrolled || lessonDone || !videoWatched) return
     onProgress({ ...entry, lessons: [...entry.lessons, lesson.id] })
     notify('Lección completada. Tu avance se guardó.')
   }
@@ -96,14 +134,22 @@ export function CourseDetail({
 
   const totalMinutes = lessons.reduce((total, item) => total + item.minutes, 0)
   const categoryLabel = courseCategories.find((c) => c.id === course.category)?.shortLabel
+  const courseAtt = (workspace?.attendance ?? []).filter((a) => a.courseId === course.id)
+  const attPresent = courseAtt.filter((a) => a.status === 'Presente' || a.status === 'Justificada').length
+  const avgAttendance = courseAtt.length ? Math.round((attPresent / courseAtt.length) * 100) : 100
+
   const contentHeading =
     section === 'syllabus'
-      ? 'Plan de estudio'
+      ? 'Plan de estudio y ficha del curso'
       : section === 'lesson'
         ? lesson.title
-        : section === 'assessment'
-          ? 'Evaluación del curso'
-          : 'Tu certificado'
+        : section === 'attendance'
+          ? 'Asistencia del curso'
+          : section === 'editor'
+            ? 'Edición docente de lecciones y evaluación'
+            : section === 'assessment'
+              ? 'Evaluación del curso'
+              : 'Tu certificado'
 
   return (
     <section className="learn-root" aria-labelledby="learn-course-heading">
@@ -121,12 +167,35 @@ export function CourseDetail({
             {course.description} · {course.group} · {course.teacher}
           </p>
         </div>
-        {section === 'lesson' && (
-          <div className="learn-step-pills" role="navigation" aria-label="Navegación rápida de lecciones">
-            <button type="button" className="ai-mini-btn tone-pill" onClick={() => setSection('syllabus')}>
-              Temario
+
+        <div className="learn-step-pills" role="navigation" aria-label="Secciones del curso">
+          <button
+            type="button"
+            className={`ai-mini-btn ${section === 'syllabus' ? 'tone-accent' : 'tone-pill'}`}
+            onClick={() => setSection('syllabus')}
+          >
+            Temario
+          </button>
+          {workspace && user && commit && (
+            <button
+              type="button"
+              className={`ai-mini-btn ${section === 'attendance' ? 'tone-accent' : 'tone-pill'}`}
+              onClick={() => setSection('attendance')}
+            >
+              <ClipboardCheck size={14} aria-hidden="true" /> Asistencia
             </button>
-            {lessons.map((item, idx) => (
+          )}
+          {canEditContent && (
+            <button
+              type="button"
+              className={`ai-mini-btn ${section === 'editor' ? 'tone-accent' : 'tone-pill'}`}
+              onClick={() => setSection('editor')}
+            >
+              <Edit3 size={14} aria-hidden="true" /> Editar curso
+            </button>
+          )}
+          {section === 'lesson' &&
+            lessons.map((item, idx) => (
               <button
                 key={item.id}
                 type="button"
@@ -136,89 +205,166 @@ export function CourseDetail({
                 {idx + 1}
               </button>
             ))}
-          </div>
-        )}
+        </div>
       </header>
 
-      {section === 'lesson' ? (
-        <div className="learn-split-workspace">
-          <div className="learn-panel learn-study">
-            <h2 ref={heading} tabIndex={-1}>
-              {contentHeading}
-            </h2>
-            <div className="learn-material-meta">
-              <BookOpen aria-hidden="true" size={15} /> Lección {lessonIndex + 1} de {lessons.length}{' '}
-              <Clock3 aria-hidden="true" size={15} /> {lesson.minutes} min
-              {lessonDone && (
-                <span className="p-badge tone-soft-accent">
-                  <Check size={13} aria-hidden="true" /> Completada
-                </span>
-              )}
-            </div>
+      {section === 'editor' && canEditContent ? (
+        <CourseTeacherEditor
+          course={course}
+          material={material}
+          commit={commit}
+          onMaterialUpdated={(next) => {
+            setMaterial(next)
+            if (!next.lessons.some((l) => l.id === lessonId) && next.lessons[0]) {
+              setLessonId(next.lessons[0].id)
+            }
+          }}
+          notify={notify}
+        />
+      ) : section === 'attendance' && workspace && user && commit ? (
+        <div className="learn-panel">
+          <CourseAttendancePanel course={course} user={user} workspace={workspace} commit={commit} notify={notify} />
+        </div>
+      ) : section === 'lesson' ? (
+        <div className="l-lesson-stack">
+          <LessonVideoStage
+            lesson={lesson}
+            courseName={course.name}
+            watched={videoWatched}
+            canLearn={canLearn}
+            onMarkWatched={markVideoWatched}
+          />
 
-            <div className="learn-reading">
-              {lesson.reading.map((paragraph) => (
-                <p key={paragraph}>{paragraph}</p>
-              ))}
+          <div className="learn-split-workspace">
+            <div className="learn-panel learn-study">
+              <h2 ref={heading} tabIndex={-1}>
+                {contentHeading}
+              </h2>
+              <div className="learn-material-meta">
+                <BookOpen aria-hidden="true" size={15} /> Lección {lessonIndex + 1} de {lessons.length}{' '}
+                <Clock3 aria-hidden="true" size={15} /> {lesson.minutes} min
+                {videoWatched && (
+                  <span className="p-badge">
+                    <Film size={13} aria-hidden="true" /> Video visto
+                  </span>
+                )}
+                {lessonDone && (
+                  <span className="p-badge tone-soft-accent">
+                    <Check size={13} aria-hidden="true" /> Completada
+                  </span>
+                )}
+              </div>
 
-              {lesson.keySteps && lesson.keySteps.length > 0 && (
-                <ol className="learn-key-steps">
-                  {lesson.keySteps.map((step) => (
-                    <li key={step}>{step}</li>
-                  ))}
-                </ol>
-              )}
+              <div className="learn-reading">
+                {lesson.reading.map((paragraph) => (
+                  <p key={paragraph}>{paragraph}</p>
+                ))}
 
-              {lesson.formulaOrCode && (
-                <pre className="learn-code-block theme-dark">
-                  <code>{lesson.formulaOrCode}</code>
-                </pre>
-              )}
+                {lesson.sublessons && lesson.sublessons.length > 0 && (
+                  <div className="l-sublessons">
+                    <h3>Sublecciones del tema</h3>
+                    {lesson.sublessons.map((sub) => (
+                      <div key={sub.id} className="l-sublesson-card">
+                        <strong>{sub.title}</strong>
+                        <p>{sub.content}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
 
-              <div className="learn-exercise">
-                <h3>
-                  <NotebookPen aria-hidden="true" size={16} /> Reto en el laboratorio
-                </h3>
-                <p>{lesson.exercise}</p>
+                {lesson.keySteps && lesson.keySteps.length > 0 && (
+                  <ol className="learn-key-steps">
+                    {lesson.keySteps.map((step) => (
+                      <li key={step}>{step}</li>
+                    ))}
+                  </ol>
+                )}
+
+                {lesson.formulaOrCode && (
+                  <pre className="learn-code-block theme-dark">
+                    <code>{lesson.formulaOrCode}</code>
+                  </pre>
+                )}
+
+                <div className="learn-exercise">
+                  <h3>
+                    <NotebookPen aria-hidden="true" size={16} /> Paso 2 · Ejercicio enfocado en el tema
+                  </h3>
+                  <p>{lesson.exercise}</p>
+                </div>
+
+                {lesson.exercises && lesson.exercises.length > 0 && (
+                  <div className="l-topic-exercises">
+                    <h3>
+                      <HelpCircle size={15} aria-hidden="true" /> Comprobación rápida del tema
+                    </h3>
+                    {lesson.exercises.map((ex) => {
+                      const picked = exerciseAnswers[ex.id]
+                      const isCorrect = picked === ex.correctIndex
+                      return (
+                        <div key={ex.id} className="l-topic-exercise-card">
+                          <strong>{ex.question}</strong>
+                          <div className="l-topic-options">
+                            {ex.options.map((opt, optIdx) => (
+                              <button
+                                key={opt}
+                                type="button"
+                                className={`ai-mini-btn ${picked === optIdx ? 'tone-accent' : 'tone-pill'}`}
+                                onClick={() => setExerciseAnswers((prev) => ({ ...prev, [ex.id]: optIdx }))}
+                              >
+                                {opt}
+                              </button>
+                            ))}
+                          </div>
+                          {picked !== undefined && (
+                            <p className={isCorrect ? 'l-ex-ok' : 'l-ex-warn'}>
+                              {isCorrect ? `Correcto: ${ex.explanation}` : 'Vuelve a revisar el video y la teoría para intentarlo de nuevo.'}
+                            </p>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+
+              <div className="learn-lesson-actions">
+                <button className="learn-action learn-action-outline" type="button" onClick={() => setSection('syllabus')}>
+                  Ver plan de estudio
+                </button>
+                {canLearn && !lessonDone && (
+                  <button className="learn-action" type="button" onClick={completeLesson}>
+                    <Check aria-hidden="true" size={16} /> Marcar como completada
+                  </button>
+                )}
+                {lessonIndex < lessons.length - 1 && (!canLearn || lessonDone) && (
+                  <button
+                    className="learn-action"
+                    type="button"
+                    onClick={() => openLesson(lessons[lessonIndex + 1].id)}
+                  >
+                    Siguiente lección
+                  </button>
+                )}
+                {canLearn && lessonDone && lessonIndex === lessons.length - 1 && readyForAssessment && (
+                  <button className="learn-action" type="button" onClick={() => setSection('assessment')}>
+                    Ir a la evaluación
+                  </button>
+                )}
               </div>
             </div>
 
-            <div className="learn-lesson-actions">
-              <button className="learn-action learn-action-outline" type="button" onClick={() => setSection('syllabus')}>
-                Ver plan de estudio
-              </button>
-              {canLearn && !lessonDone && (
-                <button className="learn-action" type="button" onClick={completeLesson}>
-                  <Check aria-hidden="true" size={16} /> Marcar como completada
-                </button>
-              )}
-              {lessonIndex < lessons.length - 1 && (!canLearn || lessonDone) && (
-                <button
-                  className="learn-action"
-                  type="button"
-                  onClick={() => openLesson(lessons[lessonIndex + 1].id)}
-                >
-                  Siguiente lección
-                </button>
-              )}
-              {canLearn && lessonDone && lessonIndex === lessons.length - 1 && readyForAssessment && (
-                <button className="learn-action" type="button" onClick={() => setSection('assessment')}>
-                  Ir a la evaluación
-                </button>
-              )}
-            </div>
+            <LessonWorkbench
+              key={lesson.id}
+              lessonId={lesson.id}
+              labKind={lesson.labKind ?? 'architecture'}
+              goal={lesson.labGoal}
+              hint={lesson.labHint}
+              canLearn={canLearn}
+              lessonDone={lessonDone}
+              onCompleteLesson={completeLesson}
+            />
           </div>
-
-          <LessonWorkbench
-            key={lesson.id}
-            lessonId={lesson.id}
-            labKind={lesson.labKind ?? 'architecture'}
-            goal={lesson.labGoal}
-            hint={lesson.labHint}
-            canLearn={canLearn}
-            lessonDone={lessonDone}
-            onCompleteLesson={completeLesson}
-          />
         </div>
       ) : (
         <div className="learn-detail-grid">
@@ -228,18 +374,56 @@ export function CourseDetail({
             </h2>
             {section === 'syllabus' && (
               <>
+                <div className="l-course-facts-grid">
+                  <div>
+                    <span>Fechas de clases</span>
+                    <strong>
+                      {course.startDate && course.endDate
+                        ? `${formatDate(course.startDate)} — ${formatDate(course.endDate)}`
+                        : 'Periodo 2026-II'}
+                    </strong>
+                  </div>
+                  <div>
+                    <span>Horario de clases</span>
+                    <strong>{course.scheduleSummary ?? 'Por confirmar'}</strong>
+                  </div>
+                  <div>
+                    <span>Duración y docente</span>
+                    <strong>
+                      {course.durationWeeks ?? 16} semanas · {course.teacher}
+                    </strong>
+                  </div>
+                  <div>
+                    <span>Próxima evaluación</span>
+                    <strong>
+                      {course.nextEvaluationDate ? formatDate(course.nextEvaluationDate) : 'Según calendario'}
+                    </strong>
+                  </div>
+                  <div className="l-course-fact-wide">
+                    <span>Método de evaluación</span>
+                    <strong>{course.evaluationMethod ?? 'Evaluación continua por hitos y laboratorio'}</strong>
+                  </div>
+                  <div>
+                    <span>Promedio de asistencia</span>
+                    <strong>
+                      <UsersRound size={13} aria-hidden="true" /> {avgAttendance}%
+                    </strong>
+                  </div>
+                </div>
+
                 <div className="learn-material-meta">
-                  <BookOpen aria-hidden="true" size={16} /> {lessons.length} lecciones <Clock3 aria-hidden="true" size={16} />{' '}
-                  {totalMinutes} min
+                  <BookOpen aria-hidden="true" size={16} /> {lessons.length} {lessons.length === 1 ? 'lección' : 'lecciones'}{' '}
+                  <Clock3 aria-hidden="true" size={16} /> {totalMinutes} min · Flujo: Video del tema + Teoría + Ejercicios prácticos
                 </div>
                 {isOrientation(course.id) && (
                   <p className="learn-info">
-                    Este curso incluye una guía general de inducción mientras se prepara su material específico.
+                    Este curso incluye una guía general de inducción mientras el docente añade más lecciones específicas.
                   </p>
                 )}
                 <ol className="learn-syllabus">
                   {lessons.map((item, index) => {
                     const completedLesson = entry.lessons.includes(item.id)
+                    const hasVideoDone = entry.watchedVideos?.includes(item.id)
                     return (
                       <li key={item.id}>
                         <button
@@ -252,7 +436,10 @@ export function CourseDetail({
                           </span>
                           <span>
                             <strong>{item.title}</strong>
-                            <span>{item.summary}</span>
+                            <span>
+                              {item.summary}
+                              {hasVideoDone ? ' · Video visto' : ' · Video + ejercicios'}
+                            </span>
                           </span>
                           <span className="learn-step-time">{item.minutes} min</span>
                           {canLearn && !entry.enrolled ? (
@@ -328,19 +515,35 @@ export function CourseDetail({
             ) : (
               <p>
                 {canLearn
-                  ? 'Matricúlate para abrir el contenido y guardar tu avance.'
-                  : 'Consulta el contenido que se muestra en el plan de estudio.'}
+                  ? 'Revisa las fechas de clases, el horario y el método de evaluación arriba, luego matricúlate para iniciar con los videos y ejercicios.'
+                  : 'Revisa el plan de estudio, la asistencia promedio del grupo o edita las lecciones y evaluaciones del curso.'}
               </p>
             )}
             {canLearn && !entry.enrolled && (
               <button className="learn-action" type="button" onClick={enroll}>
-                Matricularme
+                Matricularme en este curso
               </button>
+            )}
+            {canEditContent && (
+              <div className="learn-summary-actions">
+                <button className="learn-action" type="button" onClick={() => setSection('editor')}>
+                  <Edit3 size={16} aria-hidden="true" /> Editar lecciones y fecha
+                </button>
+                {workspace && (
+                  <button className="learn-action learn-action-outline" type="button" onClick={() => setSection('attendance')}>
+                    <CalendarDays size={16} aria-hidden="true" /> Registrar asistencia
+                  </button>
+                )}
+              </div>
             )}
             {canLearn && entry.enrolled && (
               <div className="learn-summary-actions">
-                <button className="learn-action learn-action-outline" type="button" onClick={() => setSection('syllabus')}>
-                  Ver lecciones
+                <button
+                  className="learn-action learn-action-outline"
+                  type="button"
+                  onClick={() => openLesson(lesson.id)}
+                >
+                  <Film size={15} aria-hidden="true" /> Continuar lección
                 </button>
                 <button
                   className="learn-action learn-action-outline"

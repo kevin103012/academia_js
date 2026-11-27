@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react'
+import { env } from '../../config/env'
 import { WorkspaceProvider } from '../../context/WorkspaceContext'
 import { CampusShell } from '../../features/campus/layout/CampusShell'
 import { useAuth } from '../../hooks/useAuth'
@@ -10,7 +11,7 @@ export default function CampusPage() {
   const [notice, setNotice] = useState<string>()
 
   const handleSaved = useCallback(() => {
-    setNotice('Cambios guardados en este navegador.')
+    setNotice(env.hasSupabase ? 'Cambios sincronizados en Supabase.' : 'Cambios guardados en este navegador.')
   }, [])
 
   if (!user) return null

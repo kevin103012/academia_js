@@ -1,364 +1,240 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
-import {
-  ArrowUp,
-  Binary,
-  BookOpenText,
-  Calculator,
-  ChevronRight,
-  FlaskConical,
-  Lightbulb,
-  ShieldCheck,
-  Sparkles,
-  ThumbsUp,
-} from 'lucide-react'
+import { ArrowUp, Plus, Sparkles, ThumbsUp, Trash2 } from 'lucide-react'
+import { LoadingMark } from '../../components/ui/LoadingMark'
 import { aiDomains, createInitialAiState } from '../../data/aiSeed'
-import { tutorTopics } from '../../data/tutorResponses'
-import { aiService, getActiveModelsForRole, tutorService } from '../../services'
-import type { AiControlState } from '../../types/ai'
+import { aiService } from '../../services'
+import { getActiveModelsForRole, tutorService, tutorSyncEnabled } from '../../services/tutor/tutorService'
 import type { DemoUser } from '../../types/auth'
-import type { TutorMessage, TutorTopicIcon } from '../../types/tutor'
+import type { TutorMessage, TutorSession } from '../../types/tutor'
 import { createId } from '../../utils/id'
 import '../../styles/tutor.css'
 
-const topicIcons: Record<TutorTopicIcon, typeof FlaskConical> = {
-  science: FlaskConical,
-  math: Calculator,
-  reading: BookOpenText,
-  algorithms: Binary,
-}
-
-const socraticChips = [
-  { label: 'Dame una pista', prompt: 'Dame una pista socrática paso a paso para empezar' },
-  { label: 'Ver matriz o tabla', prompt: 'Muéstrame la matriz o tabla lógica base de Gauss-Jordan y compuertas' },
-  { label: 'Verificar mi paso', prompt: 'Verifica mi planteamiento con la lista técnica de comprobación' },
-  { label: 'Reto práctico', prompt: 'Dame un reto práctico corto de complejidad o circuitos' },
-]
-
-function renderFormattedText(text: string) {
-  const segments = text.split(/```(?:[a-zA-Z]*)\n?([\s\S]*?)```/g)
-  return segments.map((part, index) => {
-    const trimmed = part.trim()
-    if (!trimmed) return null
-    if (index % 2 === 1) {
-      return (
-        <pre key={index} className="study-tutor__code theme-dark">
-          <code>{trimmed}</code>
-        </pre>
-      )
-    }
-    return <p key={index}>{trimmed}</p>
-  })
-}
-
-function createMessage(role: TutorMessage['role'], text: string): TutorMessage {
-  return { id: createId(), role, text }
+function MessageText({ text }: { text: string }) {
+  return <div className="study-tutor__body">
+    {text.split(/```(?:[a-zA-Z]*)\n?([\s\S]*?)```/g).map((part, index) =>
+      index % 2 ? <pre key={index}><code>{part.trim()}</code></pre> : <p key={index}>{part.trim()}</p>,
+    )}
+  </div>
 }
 
 function TutorConversation({ user }: { user: DemoUser }) {
-  const [messages, setMessages] = useState<TutorMessage[]>([])
-  const [aiState, setAiState] = useState<AiControlState>(createInitialAiState)
-  const [loaded, setLoaded] = useState(false)
+  const [sessions, setSessions] = useState<TutorSession[]>([])
+  const [selectedId, setSelectedId] = useState<string>()
+  const [draftDomain, setDraftDomain] = useState<TutorSession['domain']>('auto')
   const [question, setQuestion] = useState('')
-  const [storageError, setStorageError] = useState(false)
-  const [confirmClear, setConfirmClear] = useState(false)
-  const conversation = useRef<HTMLDivElement>(null)
-  const questionField = useRef<HTMLTextAreaElement>(null)
-  const clearTrigger = useRef<HTMLButtonElement>(null)
-  const shouldPersistRef = useRef(false)
-
-  const lastMessage = messages.at(-1)
-  const pendingMessage = lastMessage?.role === 'student' ? lastMessage : undefined
-  const waiting = Boolean(pendingMessage)
-
-  const activeModels = getActiveModelsForRole(aiState, user.role)
-  const activeDomains = new Set(activeModels.map((model) => model.domain))
+  const [ready, setReady] = useState(false)
+  const [working, setWorking] = useState(false)
+  const [error, setError] = useState('')
+  const [confirmRemove, setConfirmRemove] = useState(false)
+  const [config, setConfig] = useState(createInitialAiState)
+  const log = useRef<HTMLDivElement>(null)
+  const field = useRef<HTMLTextAreaElement>(null)
+  const busy = useRef(false)
 
   useEffect(() => {
     let active = true
-    Promise.all([tutorService.loadMessages(user.id), aiService.load()])
-      .then(([loadedMessages, loadedAi]) => {
-        if (!active) return
-        shouldPersistRef.current = false
-        setMessages(loadedMessages)
-        setAiState(loadedAi)
-        setLoaded(true)
-      })
-      .catch(() => {
-        if (active) setLoaded(true)
-      })
-    return () => {
-      active = false
-    }
-  }, [user.id])
+    Promise.allSettled([tutorService.list(user), aiService.load()]).then(([history, ai]) => {
+      if (!active) return
+      if (history.status === 'fulfilled') {
+        setSessions(history.value)
+        setSelectedId(history.value[0]?.id)
+      }
+      if (ai.status === 'fulfilled') setConfig(ai.value)
+      if (history.status === 'rejected' || ai.status === 'rejected') setError('No se pudo cargar todo el espacio de estudio.')
+      setReady(true)
+    })
+    return () => { active = false }
+  }, [user])
+
+  const active = sessions.find((session) => session.id === selectedId)
+  const models = getActiveModelsForRole(config, user.role)
+  const domains = aiDomains.filter((domain) => models.some((model) => model.domain === domain.id))
+  const domain = active?.domain ?? draftDomain
+  const available = domain === 'auto' ? models.length > 0 : domains.some((item) => item.id === domain)
+  const availableModels = domain === 'auto' ? models : models.filter((model) => model.domain === domain)
+  const lastReply = active?.messages.filter((message) => message.role === 'tutor').at(-1)
+  const suggestions = (domain === 'auto' ? domains.slice(0, 2) : domains.filter((item) => item.id === domain))
+  const hasMessages = Boolean(active?.messages.length)
 
   useEffect(() => {
-    if (!loaded || !shouldPersistRef.current) return
-    let active = true
-    tutorService
-      .saveMessages(user.id, messages)
-      .then((ok) => {
-        if (active) setStorageError(!ok)
-      })
-      .catch(() => {
-        if (active) setStorageError(true)
-      })
-    return () => {
-      active = false
+    if (log.current) log.current.scrollTop = log.current.scrollHeight
+  }, [active?.id, active?.messages.length, working])
+
+  async function run(task: () => Promise<void>) {
+    if (busy.current) return
+    busy.current = true
+    setWorking(true)
+    setError('')
+    try {
+      await task()
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'No se pudo completar el cambio.')
+    } finally {
+      busy.current = false
+      setWorking(false)
     }
-  }, [messages, loaded, user.id])
+  }
 
-  useEffect(() => {
-    if (!pendingMessage) return
-    let active = true
-    tutorService
-      .ask(pendingMessage.text, user.role)
-      .then((answer) => {
-        if (!active) return
-        const reply = createMessage('tutor', answer)
-        shouldPersistRef.current = true
-        setMessages((current) => (current.at(-1)?.id === pendingMessage.id ? [...current, reply] : current))
-      })
-      .catch(() => {
-        if (!active) return
-        const fallback = createMessage('tutor', 'No pudimos obtener una respuesta en este momento. Intenta de nuevo.')
-        shouldPersistRef.current = true
-        setMessages((current) => (current.at(-1)?.id === pendingMessage.id ? [...current, fallback] : current))
-      })
-    return () => {
-      active = false
+  async function save(next: TutorSession) {
+    await tutorService.save(user, next)
+    setSessions((current) => [next, ...current.filter((session) => session.id !== next.id)])
+    setSelectedId(next.id)
+  }
+
+  function newConversation() {
+    setSelectedId(undefined)
+    setDraftDomain('auto')
+    setQuestion('')
+    setConfirmRemove(false)
+    field.current?.focus()
+  }
+
+  function selectConversation(id: string) {
+    setSelectedId(id)
+    setQuestion('')
+    setConfirmRemove(false)
+  }
+
+  function changeDomain(nextDomain: TutorSession['domain']) {
+    if (!active) {
+      setDraftDomain(nextDomain)
+      return
     }
-  }, [pendingMessage, user.role])
-
-  useEffect(() => {
-    const log = conversation.current
-    if (log) log.scrollTop = log.scrollHeight
-  }, [lastMessage?.id])
-
-  function ask(text: string) {
-    const cleaned = text.trim()
-    if (!cleaned || waiting) return
-    const message = createMessage('student', cleaned)
-    shouldPersistRef.current = true
-    setMessages((current) => (current.at(-1)?.role === 'student' ? current : [...current, message]))
-    setConfirmClear(false)
+    void run(() => save({ ...active, domain: nextDomain, updatedAt: new Date().toISOString() }))
   }
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (!question.trim() || waiting) return
-    ask(question)
-    setQuestion('')
-    questionField.current?.focus()
+    const text = question.trim()
+    if (!text || !available) return
+    void run(async () => {
+      const prompt: TutorMessage = { id: createId(), role: 'student', text }
+      const reply = await tutorService.answer(user, domain, text)
+      await save({
+        id: active?.id ?? createId(),
+        title: active?.title ?? (text.length > 52 ? text.slice(0, 51) + '…' : text),
+        domain,
+        updatedAt: new Date().toISOString(),
+        messages: [...(active?.messages ?? []), prompt, reply],
+      })
+      setQuestion('')
+    })
   }
 
-  function toggleHelpful(id: string) {
-    shouldPersistRef.current = true
-    setMessages((current) =>
-      current.map((message) => (message.id === id ? { ...message, helpful: !message.helpful } : message)),
-    )
+  function removeConversation() {
+    if (!active) return
+    void run(async () => {
+      await tutorService.remove(user, active.id)
+      setSessions((current) => current.filter((session) => session.id !== active.id))
+      newConversation()
+    })
   }
 
-  function clear() {
-    shouldPersistRef.current = false
-    setMessages([])
-    setConfirmClear(false)
-    void tutorService
-      .clearMessages(user.id)
-      .then((ok) => setStorageError(!ok))
-      .catch(() => setStorageError(true))
-    questionField.current?.focus()
-  }
+  if (!ready) return <div className="campus-loading"><LoadingMark label="Cargando tutor" /></div>
 
   return (
     <section className="study-tutor" aria-labelledby="tutor-heading">
-      <header className="study-tutor__heading">
+      <header className="p-section-heading">
         <div>
           <h1 id="tutor-heading">Tutor de estudio</h1>
-          <p>Álgebra Lineal, Circuitos Digitales, Frameworks y Algoritmos con bloques técnicos.</p>
+          <p>Consulta ejercicios y ejemplos por especialidad.</p>
         </div>
-        <div className="study-tutor__models" aria-label="Especialidades de IA activas para tu perfil">
-          <span className={`p-badge ${aiState.config.stepByStepStudentMode ? 'tone-soft-accent' : ''}`}>
-            <ShieldCheck size={13} aria-hidden="true" />{' '}
-            {aiState.config.stepByStepStudentMode ? 'Modo Socrático' : 'Respuesta directa'}
-          </span>
-          {activeModels.length > 0 ? (
-            activeModels.map((model) => {
-              const shortDomain = aiDomains.find((d) => d.id === model.domain)?.shortLabel ?? model.domainLabel
-              return (
-                <span key={model.id} className="p-badge tone-soft-accent">
-                  {model.name} · {shortDomain} ({model.valAccuracy.toFixed(1)}%)
-                </span>
-              )
-            })
-          ) : (
-            <span className="p-badge">Sin modelos habilitados por administración</span>
-          )}
-        </div>
+        <span className="p-badge">Tutor de ejemplos</span>
       </header>
 
-      <div className="study-tutor__layout">
+      <div className="study-tutor__layout study-tutor__sessions-layout">
+        <aside className="study-tutor__topics" aria-label="Historial del tutor">
+          <button type="button" className="p-button p-button-primary" onClick={newConversation} disabled={working}>
+            <Plus size={16} aria-hidden="true" /> Nueva conversación
+          </button>
+          {sessions.length > 0 && <details className="study-tutor__history" open>
+            <summary>Conversaciones ({sessions.length})</summary>
+            <div className="study-tutor__session-list">
+            {sessions.map((session) => (
+              <button
+                key={session.id}
+                type="button"
+                aria-current={session.id === selectedId ? 'true' : undefined}
+                onClick={() => selectConversation(session.id)}
+                disabled={working}
+              >
+                <strong>{session.title}</strong>
+                <small>{aiDomains.find((item) => item.id === session.domain)?.shortLabel ?? 'Automática'}</small>
+              </button>
+            ))}
+            </div>
+          </details>}
+        </aside>
+
         <section className="study-tutor__chat" aria-labelledby="tutor-chat-heading">
           <div className="study-tutor__chat-heading">
             <div>
-              <h2 id="tutor-chat-heading">
-                <Sparkles size={18} aria-hidden="true" /> Copiloto técnico
-              </h2>
-              <p>Pistas progresivas, matrices, tablas de verdad y arquitectura limpia.</p>
+              <h2 id="tutor-chat-heading"><Sparkles size={18} aria-hidden="true" /> {active?.title ?? 'Consulta de estudio'}</h2>
+              <p>{lastReply?.model ? 'Última respuesta con ' + lastReply.model
+                : domain === 'auto' ? `${availableModels.length} modelos disponibles`
+                : availableModels.map((model) => model.name).join(' · ') || 'Sin modelos disponibles'}</p>
             </div>
-            {messages.length > 0 && (
-              <button
-                ref={clearTrigger}
-                className="study-tutor__clear tone-pill"
-                type="button"
-                aria-expanded={confirmClear}
-                aria-controls="tutor-delete-confirmation"
-                onClick={() => setConfirmClear(!confirmClear)}
-              >
-                Borrar historial
-              </button>
-            )}
+            <label className="study-tutor__specialty">
+              Especialidad
+              <select value={domain} disabled={working} onChange={(event) => changeDomain(event.target.value as TutorSession['domain'])}>
+                <option value="auto">Detección automática</option>
+                {!available && domain !== 'auto' && <option value={domain}>{aiDomains.find((item) => item.id === domain)?.label ?? domain} · Inactivo</option>}
+                {domains.map((item) => <option value={item.id} key={item.id}>{item.label}</option>)}
+              </select>
+            </label>
+            {active && <button className="p-button p-button-short" type="button" onClick={() => setConfirmRemove(!confirmRemove)} disabled={working}>
+              <Trash2 size={15} aria-hidden="true" /> Eliminar conversación
+            </button>}
           </div>
 
-          <div
-            id="tutor-delete-confirmation"
-            className="study-tutor__confirmation"
-            role="group"
-            aria-label="Confirmar borrado del historial"
-            hidden={!confirmClear}
-          >
-            <span>¿Borrar los mensajes guardados en este navegador?</span>
+          {confirmRemove && <div className="study-tutor__confirmation">
+            <span>¿Eliminar esta conversación y sus mensajes?</span>
             <div>
-              <button
-                className="tone-pill"
-                type="button"
-                onClick={() => {
-                  setConfirmClear(false)
-                  clearTrigger.current?.focus()
-                }}
-              >
-                Cancelar
-              </button>
-              <button className="tone-danger" type="button" onClick={clear}>
-                Borrar
-              </button>
+              <button type="button" className="tone-pill" onClick={() => setConfirmRemove(false)}>Cancelar</button>
+              <button type="button" className="tone-danger" onClick={removeConversation} disabled={working}>Eliminar</button>
             </div>
-          </div>
+          </div>}
 
-          <div className="study-tutor__log" ref={conversation} role="log" aria-label="Mensajes del tutor" tabIndex={0}>
-            {messages.length === 0 ? (
-              <div className="study-tutor__welcome">
-                <div className="study-tutor__symbol">
-                  <Sparkles size={23} aria-hidden="true" />
-                </div>
-                <h3>¿Qué quieres resolver hoy?</h3>
-                <p>Escribe una duda técnica, usa un chip socrático o elige una especialidad a la derecha.</p>
+          <div className="study-tutor__log" data-empty={!hasMessages} ref={log} role="log" aria-label="Mensajes del tutor" tabIndex={0}>
+            {!hasMessages && suggestions.length > 0 && <div className="study-tutor__welcome">
+              <h3>Prueba una pregunta</h3>
+              <div className="study-tutor__suggestions">
+                {suggestions.map((item) => <button key={item.id} type="button" className="p-button p-button-short" onClick={() => {
+                  setQuestion(item.samplePrompt)
+                  field.current?.focus()
+                }}>{item.samplePrompt}</button>)}
               </div>
-            ) : (
-              messages.map((message) => (
-                <article key={message.id} className="study-tutor__message" data-role={message.role}>
-                  <h3>{message.role === 'student' ? 'Tú' : 'Copiloto Sparks'}</h3>
-                  <div className="study-tutor__body">{renderFormattedText(message.text)}</div>
-                  {message.role === 'tutor' && (
-                    <button
-                      className={`study-tutor__feedback ${message.helpful ? 'tone-soft-accent' : 'tone-pill'}`}
-                      type="button"
-                      aria-pressed={Boolean(message.helpful)}
-                      onClick={() => toggleHelpful(message.id)}
-                    >
-                      <ThumbsUp size={14} aria-hidden="true" /> Me sirvió
-                    </button>
-                  )}
-                </article>
-              ))
-            )}
-            {waiting && (
-              <div className="study-tutor__waiting">
-                <span className="study-tutor__dots" aria-hidden="true">
-                  <i />
-                  <i />
-                  <i />
-                </span>
-                Consultando modelo especializado…
-              </div>
-            )}
+            </div>}
+            {active?.messages.map((message) => <article key={message.id} className="study-tutor__message" data-role={message.role}>
+              <h3>{message.role === 'student' ? 'Tú' : message.model ?? 'Tutor de estudio'}</h3>
+              <MessageText text={message.text} />
+              {message.role === 'tutor' && <button
+                className={'study-tutor__feedback ' + (message.helpful ? 'tone-soft-accent' : 'tone-pill')}
+                type="button"
+                disabled={working}
+                aria-pressed={Boolean(message.helpful)}
+                onClick={() => void run(() => save({
+                  ...active,
+                  messages: active.messages.map((item) => item.id === message.id ? { ...item, helpful: !item.helpful } : item),
+                }))}
+              ><ThumbsUp size={14} aria-hidden="true" /> Me sirvió</button>}
+            </article>)}
           </div>
 
           <form className="study-tutor__composer" onSubmit={submit}>
-            <div className="study-tutor__chips" role="group" aria-label="Acciones socráticas rápidas">
-              {socraticChips.map((chip) => (
-                <button
-                  key={chip.label}
-                  type="button"
-                  className="study-tutor__chip tone-pill"
-                  disabled={waiting}
-                  onClick={() => {
-                    ask(chip.prompt)
-                    questionField.current?.focus()
-                  }}
-                >
-                  <Lightbulb size={13} aria-hidden="true" /> {chip.label}
-                </button>
-              ))}
-            </div>
             <label htmlFor="tutor-question">Tu consulta</label>
             <div className="study-tutor__entry">
-              <textarea
-                id="tutor-question"
-                ref={questionField}
-                rows={2}
-                maxLength={600}
-                value={question}
-                onChange={(event) => setQuestion(event.target.value)}
-                placeholder="Ej: ¿Cómo escalono una matriz por Gauss-Jordan?"
-              />
-              <button
-                className="study-tutor__send"
-                type="submit"
-                disabled={!question.trim() || waiting}
-                aria-label="Enviar pregunta"
-              >
+              <textarea id="tutor-question" ref={field} maxLength={600} rows={2} value={question} onChange={(event) => setQuestion(event.target.value)} placeholder="Escribe una pregunta o pega tu ejercicio" />
+              <button type="submit" className="study-tutor__send" disabled={working || !available || !question.trim()} aria-label="Enviar pregunta">
                 <ArrowUp size={21} aria-hidden="true" />
               </button>
             </div>
-            {storageError ? (
-              <p role="status">El historial no se pudo guardar en este navegador.</p>
-            ) : (
-              <p>El historial se guarda en este navegador.</p>
-            )}
+            {working && <p role="status">Procesando el cambio…</p>}
+            {error && <p role="alert">{error}</p>}
+            {!available && <p>Elige una especialidad con modelos habilitados para tu perfil.</p>}
+            {!tutorSyncEnabled && <p>El historial se guarda en este navegador.</p>}
           </form>
         </section>
-
-        <aside className="study-tutor__topics" aria-labelledby="tutor-topics-heading">
-          <h2 id="tutor-topics-heading">Temas por especialidad</h2>
-          <ul>
-            {tutorTopics.map(({ domain, title, reason, question: prompt, icon }) => {
-              const Icon = topicIcons[icon]
-              const isEnabled = activeDomains.has(domain)
-              return (
-                <li key={title}>
-                  <button
-                    type="button"
-                    disabled={waiting}
-                    onClick={() => {
-                      ask(prompt)
-                      questionField.current?.focus()
-                    }}
-                  >
-                    <Icon size={19} aria-hidden="true" />
-                    <span>
-                      <strong>{title}</strong>
-                      <small>{reason}</small>
-                      <small className="study-tutor__topic-state">
-                        {isEnabled ? 'Modelo activo' : 'Desactivado por admin'}
-                      </small>
-                    </span>
-                    <ChevronRight size={16} aria-hidden="true" />
-                  </button>
-                </li>
-              )
-            })}
-          </ul>
-        </aside>
       </div>
     </section>
   )

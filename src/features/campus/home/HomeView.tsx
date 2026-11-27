@@ -1,5 +1,6 @@
 import {
   Activity as ActivityIcon,
+  ArrowRight,
   Binary,
   BookOpen,
   CalendarDays,
@@ -10,14 +11,19 @@ import {
   GraduationCap,
   Layers,
   Megaphone,
+  MessageSquare,
   Network,
   Pi,
   UsersRound,
 } from 'lucide-react'
-import { completedLessonCount, courseLessons } from '../../../services'
+import { useEffect, useState } from 'react'
+import { communityService, completedLessonCount, courseLessons } from '../../../services'
 import type { DemoUser } from '../../../types/auth'
+import type { CommunityState } from '../../../types/community'
 import { courseCategories, type CourseCategoryId, type Workspace } from '../../../types/workspace'
 import { dateKey, formatDate } from '../../../utils/date'
+import { canSeeCalendarEvent, visibleNotices } from '../../../utils/campusAccess'
+import { useCampusLanguage } from '../../../utils/i18n'
 import type { CampusNavigate } from '../navigation'
 
 const categoryIcons: Record<CourseCategoryId, typeof Cpu> = {
@@ -34,6 +40,22 @@ interface HomeViewProps {
 }
 
 export function HomeView({ user, workspace, navigate }: HomeViewProps) {
+  const [community, setCommunity] = useState<CommunityState>({ groups: [], activeGroupId: '' })
+  const { t } = useCampusLanguage()
+
+  useEffect(() => {
+    let active = true
+    communityService
+      .load(user)
+      .then((data) => {
+        if (active) setCommunity(data)
+      })
+      .catch(() => {})
+    return () => {
+      active = false
+    }
+  }, [user])
+
   const student = user.role === 'student'
   const enrollment = workspace.courses.filter((course) => workspace.progress[course.id]?.enrolled)
   const certificates = enrollment.filter((course) => workspace.progress[course.id]?.certifiedAt).length
@@ -58,9 +80,19 @@ export function HomeView({ user, workspace, navigate }: HomeViewProps) {
 
   const toReview = workspace.submissions.filter((submission) => submission.score === undefined).length
   const nextEvent = workspace.events
-    .filter((event) => event.date >= dateKey())
+    .filter((event) => event.date >= dateKey() && canSeeCalendarEvent(user, workspace, event))
     .sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time))[0]
   const recent = workspace.audit.filter((item) => !student || item.actor === user.name).slice(0, 3)
+
+  const joinedGroups = community.groups.filter((g) => g.joined)
+  const latestCommunityEntry = joinedGroups
+    .flatMap((group) =>
+      group.messages.map((msg) => ({
+        group,
+        message: msg,
+      })),
+    )
+    .sort((a, b) => (b.message.sentOn ?? b.message.sentAt).localeCompare(a.message.sentOn ?? a.message.sentAt))[0]
 
   const stats = student
     ? [
@@ -73,14 +105,16 @@ export function HomeView({ user, workspace, navigate }: HomeViewProps) {
         { icon: UsersRound, number: workspace.students.length, label: 'Estudiantes registrados' },
         { icon: BookOpen, number: workspace.courses.length, label: 'Cursos en catálogo' },
         { icon: ClipboardList, number: toReview, label: 'Entregas por revisar' },
-        { icon: GraduationCap, number: certificates, label: 'Certificados' },
+        { icon: Megaphone, number: visibleNotices(user, workspace).length, label: 'Avisos visibles' },
       ]
 
   return (
     <section className="p-dashboard">
       <header className="p-section-heading p-welcome">
         <div>
-          <h1>Hola, {user.name.split(' ')[0]}.</h1>
+          <h1>
+            {t.hello}, {user.name.split(' ')[0]}.
+          </h1>
           <p>
             {student
               ? 'Retoma tu laboratorio interactivo o participa en tus grupos de Comunidad.'
@@ -114,7 +148,7 @@ export function HomeView({ user, workspace, navigate }: HomeViewProps) {
             >
               {student
                 ? recommended && workspace.progress[recommended.id]?.enrolled
-                  ? 'Abrir laboratorio Split-Screen'
+                  ? 'Abrir curso'
                   : 'Explorar cursos'
                 : 'Revisar actividades'}
             </button>
@@ -161,8 +195,54 @@ export function HomeView({ user, workspace, navigate }: HomeViewProps) {
         ))}
       </dl>
 
+      <article className="p-card p-community-spotlight" aria-labelledby="dash-community-heading">
+        <div className="p-card-head">
+          <div className="p-community-spotlight-title">
+            <span className="p-kind-icon p-teal">
+              <MessageSquare size={19} aria-hidden="true" />
+            </span>
+            <div>
+              <h2 id="dash-community-heading">{t.communitySpotlightTitle}</h2>
+              <p className="p-meta">
+                {latestCommunityEntry
+                  ? `${latestCommunityEntry.group.name} · ${joinedGroups.length} grupos activos`
+                  : `${community.groups.length} grupos disponibles para estudiar en vivo`}
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            className="p-button p-button-short tone-soft-accent"
+            onClick={() => {
+              if (latestCommunityEntry) communityService.setActive(user, latestCommunityEntry.group.id)
+              navigate(joinedGroups.length > 0 ? 'community-mine' : 'community-discover')
+            }}
+          >
+            {t.goToCommunity} <ArrowRight size={15} aria-hidden="true" />
+          </button>
+        </div>
+
+        {latestCommunityEntry ? (
+          <div className="p-community-spotlight-msg">
+            <span className="p-avatar">{latestCommunityEntry.message.initials}</span>
+            <div className="p-list-copy">
+              <strong>
+                {latestCommunityEntry.message.author}{' '}
+                <span className="p-badge">{latestCommunityEntry.message.authorRole}</span>
+                <small className="p-spotlight-time">{latestCommunityEntry.message.sentAt}</small>
+              </strong>
+              <p>{latestCommunityEntry.message.text.split('\n')[0]}</p>
+            </div>
+          </div>
+        ) : (
+          <p className="p-meta">
+            Únete a un canal por curso o especialidad en Comunidad para ver las conversaciones en tiempo real.
+          </p>
+        )}
+      </article>
+
       <div className="p-dashboard-grid">
-        <div className="p-card p-report">
+        <section className="p-dashboard-section">
           <div className="p-card-head">
             <h2>Avance por categoría tecnológica</h2>
             <button className="p-text-button" onClick={() => navigate('learning')}>
@@ -197,36 +277,38 @@ export function HomeView({ user, workspace, navigate }: HomeViewProps) {
               )
             })}
           </div>
-        </div>
+        </section>
 
-        <div className="p-card p-report">
+        <section className="p-dashboard-section">
           <div className="p-card-head">
-            <h2>Avisos y actividad</h2>
+            <h2>Avisos y actividad reciente</h2>
             <button className="p-text-button" onClick={() => navigate('notices')}>
               Ver avisos
             </button>
           </div>
-          {workspace.notices.slice(0, 2).map((item) => (
-            <div className="p-audit-row" key={item.id}>
-              <Megaphone size={16} />
-              <div className="p-list-copy">
-                <strong>{item.title}</strong>
-                <small>{item.author}</small>
+          <div className="p-open-list">
+            {visibleNotices(user, workspace).slice(0, 2).map((item) => (
+              <div className="p-audit-row" key={item.id}>
+                <Megaphone size={16} aria-hidden="true" />
+                <div className="p-list-copy">
+                  <strong>{item.title}</strong>
+                  <small>{item.author}</small>
+                </div>
+                <time dateTime={item.date}>{formatDate(item.date)}</time>
               </div>
-              <time dateTime={item.date}>{formatDate(item.date)}</time>
-            </div>
-          ))}
-          {recent.slice(0, 2).map((item) => (
-            <div className="p-audit-row" key={item.id}>
-              <ActivityIcon size={16} />
-              <div className="p-list-copy">
-                <strong>{item.action}</strong>
-                <small>{item.actor}</small>
+            ))}
+            {recent.slice(0, 2).map((item) => (
+              <div className="p-audit-row" key={item.id}>
+                <ActivityIcon size={16} aria-hidden="true" />
+                <div className="p-list-copy">
+                  <strong>{item.action}</strong>
+                  <small>{item.actor}</small>
+                </div>
+                <time dateTime={item.date}>{formatDate(item.date)}</time>
               </div>
-              <time dateTime={item.date}>{formatDate(item.date)}</time>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        </section>
       </div>
     </section>
   )

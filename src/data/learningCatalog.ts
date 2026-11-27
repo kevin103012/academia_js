@@ -10,6 +10,8 @@ export const materials: Record<string, CourseMaterial> = {
         title: 'Flujo de corriente y señal digital',
         summary: 'Identifica los nodos de un circuito cerrado y diferencia niveles lógicos alto y bajo.',
         minutes: 8,
+        videoTitle: 'Simulación de compuertas digitales · SOPORTE visual',
+        videoUrl: 'https://www.youtube.com/watch?v=dYfOFVdhvB4',
         reading: [
           'Un circuito eléctrico requiere un lazo cerrado entre fuente, carga y tierra para que circule corriente. En electrónica digital, esos niveles de tensión representan estados binarios: 1 lógico (encendido) y 0 lógico (apagado).',
           'Si un interruptor abre la malla, la corriente cae a cero y la salida pasa a estado bajo. Comprender esta base física evita errores comunes al cablear microcontroladores y protoboards.',
@@ -23,6 +25,13 @@ export const materials: Record<string, CourseMaterial> = {
 V_out = (A && B) ? 5.0 : 0.0   // Nivel lógico ALTO / BAJO
 I_LED = (5.0V - 2.0V) / 330Ω   // ≈ 9.1 mA de conducción`,
         exercise: 'Activa el lazo cerrado con la compuerta AND y ambas entradas en 1 para encender el LED.',
+        exercises: [{
+          id: 'circuit-check-and',
+          question: 'Si A vale 1 y B vale 0, ¿cuál es la salida de una compuerta AND?',
+          options: ['0', '1', 'Depende del orden de las entradas'],
+          correctIndex: 0,
+          explanation: 'AND entrega 1 solo cuando ambas entradas están activas.',
+        }],
         labKind: 'circuit',
         labGoal: 'Configura la compuerta AND con A = 1 y B = 1 para validar conducción a 4.9 V.',
         labHint: 'Con una compuerta AND, basta que una entrada valga 0 para abrir la conducción hacia el LED.',
@@ -32,6 +41,8 @@ I_LED = (5.0V - 2.0V) / 330Ω   // ≈ 9.1 mA de conducción`,
         title: 'Compuertas lógicas y conductores',
         summary: 'Aplica tablas de verdad AND/OR/NOT y compara materiales conductores y aislantes.',
         minutes: 7,
+        videoTitle: 'Tablas de verdad de NAND y otras compuertas · Clases en Línea',
+        videoUrl: 'https://www.youtube.com/watch?v=793BPwWgBjc',
         reading: [
           'Una compuerta AND entrega 1 únicamente cuando todas sus entradas valen 1, mientras que una compuerta OR entrega 1 si al menos una entrada está activa. Combinarlas permite construir sumadores y multiplexores.',
           'Al implementar circuitos físicos, el cobre y las pistas de PCB conducen la señal con baja resistencia, mientras que el encapsulado aislante protege contra cortocircuitos entre nodos adyacentes.',
@@ -45,6 +56,13 @@ I_LED = (5.0V - 2.0V) / 330Ω   // ≈ 9.1 mA de conducción`,
 A=0, B=0 -> Q=1  |  A=0, B=1 -> Q=1
 A=1, B=0 -> Q=1  |  A=1, B=1 -> Q=0`,
         exercise: 'Configura la compuerta NAND en el simulador y comprueba qué combinación apaga la salida.',
+        exercises: [{
+          id: 'circuit-check-nand',
+          question: '¿Con qué entradas entrega 0 una compuerta NAND?',
+          options: ['A = 0, B = 0', 'A = 1, B = 0', 'A = 1, B = 1'],
+          correctIndex: 2,
+          explanation: 'NAND invierte AND. AND vale 1 cuando las dos entradas valen 1.',
+        }],
         labKind: 'circuit',
         labGoal: 'Selecciona NAND con A = 1 y B = 1 para comprobar que la salida cae a 0.',
         labHint: 'NAND invierte la salida de AND: cuando ambas entradas están en alto (1, 1), la salida pasa a 0.',
@@ -54,6 +72,8 @@ A=1, B=0 -> Q=1  |  A=1, B=1 -> Q=0`,
         title: 'Verificación y telemetría de nodos',
         summary: 'Registra mediciones de voltaje y contraste lógico para validar el prototipo.',
         minutes: 9,
+        videoTitle: 'Comprobación de la salida XOR en el simulador · SOPORTE visual',
+        videoUrl: 'https://www.youtube.com/watch?v=dYfOFVdhvB4',
         reading: [
           'Antes de energizar un diseño, formula una hipótesis sobre el voltaje esperado en cada nodo de prueba. Luego contrasta la medición real con un multímetro o simulador lógico.',
           'Cuando un LED no enciende, revisa polaridad, resistencia de protección y continuidad a tierra antes de reemplazar componentes.',
@@ -66,6 +86,13 @@ A=1, B=0 -> Q=1  |  A=1, B=1 -> Q=0`,
         formulaOrCode: `// Comparador binario XOR: Q = A ⊕ B
 Q = (A !== B) ? 1 : 0   // Activa alerta cuando las señales difieren`,
         exercise: 'Simula una condición de discrepancia entre A y B con la compuerta XOR.',
+        exercises: [{
+          id: 'circuit-check-xor',
+          question: '¿Qué condición enciende la salida del detector XOR?',
+          options: ['Dos entradas iguales', 'Dos entradas distintas', 'Solo dos entradas en 0'],
+          correctIndex: 1,
+          explanation: 'La salida XOR indica que los dos valores son diferentes.',
+        }],
         labKind: 'circuit',
         labGoal: 'Selecciona XOR con entradas distintas (ej. A = 1, B = 0) para disparar la señal de control.',
         labHint: 'XOR entrega 1 lógico exclusivamente cuando A y B tienen estados opuestos.',
@@ -341,9 +368,23 @@ export class EnrollCourseUseCase {
         title: 'Grafos, Dijkstra y análisis asintótico en C++',
         summary: 'Modela listas de adyacencia con std::priority_queue en O((V + E) log V).',
         minutes: 9,
+        videoTitle: 'Clase 1: Listas de adyacencia y min-heap en Dijkstra',
+        videoDuration: '06:40',
         reading: [
           'Representar grafos dispersos mediante vector<vector<pair<int,int>>> reduce la memoria de O(V²) a O(V + E).',
           'Con un min-heap (std::priority_queue), el algoritmo de Dijkstra encuentra caminos mínimos sin pesos negativos en tiempo cuasi-lineal.',
+        ],
+        sublessons: [
+          {
+            id: 'alg-sub-1',
+            title: '1.1 Representación dispersa vs. matriz',
+            content: 'Para grafos con E ≪ V², una lista de adyacencia evita recorrer filas vacías durante la relajación.',
+          },
+          {
+            id: 'alg-sub-2',
+            title: '1.2 Invariante de relajación greedy',
+            content: 'Cada arista solo se relaja cuando d[u] + w < d[v], garantizando optimalidad con pesos no negativos.',
+          },
         ],
         keySteps: [
           'Inicializa distancias en INF y origen en 0.',
@@ -353,6 +394,15 @@ export class EnrollCourseUseCase {
         formulaOrCode: `priority_queue<pair<int,int>, vector<pair<int,int>>, greater<>> pq;
 // Complejidad: O((V + E) log V)`,
         exercise: 'Comprueba la separación limpia entre modelos, algoritmos/servicios y estado.',
+        exercises: [
+          {
+            id: 'alg-ex-1',
+            question: '¿Cuál es la complejidad temporal de Dijkstra usando lista de adyacencia y binary min-heap?',
+            options: ['O(V²)', 'O((V + E) log V)', 'O(V · E)'],
+            correctIndex: 1,
+            explanation: 'Cada vértice entra y sale del heap O(log V) veces y cada arista se inspecciona una vez.',
+          },
+        ],
         labKind: 'architecture',
         labGoal: 'Valida la separación de responsabilidades antes de pasar al reto de grafos.',
         labHint: 'Mantén estructuras de datos puras separadas de la capa de I/O.',
@@ -360,6 +410,113 @@ export class EnrollCourseUseCase {
     ],
     questions: [
       { prompt: '¿Qué estructura optimiza la extracción del siguiente nodo mínimo en Dijkstra?', options: ['Pila LIFO simple', 'Min-Heap / priority_queue', 'Lista enlazada sin ordenar'], answer: 1, explanation: 'Un min-heap extrae el vértice mínimo en O(log V).' },
+    ],
+  },
+  'redes-cyber': {
+    lessons: [
+      {
+        id: 'net-vlsm',
+        title: 'Subredes VLSM, enrutamiento y reglas nftables',
+        summary: 'Calcula máscaras de longitud variable y segmenta tráfico en servidores Linux.',
+        minutes: 10,
+        videoTitle: 'Clase 1: Diseño de subredes VLSM y firewall stateless/stateful',
+        videoDuration: '08:15',
+        reading: [
+          'El direccionamiento VLSM optimiza el uso de bloques IPv4 asignando prefijos /26, /27 o /30 según la cantidad exacta de hosts por segmento de red.',
+          'En Linux moderno, nftables reemplaza a iptables unificando IPv4/IPv6 y aplicando políticas default-drop en la cadena input.',
+        ],
+        sublessons: [
+          {
+            id: 'net-sub-1',
+            title: '1.1 Cálculo de máscara mínima (2^h - 2)',
+            content: 'Para 28 hosts útiles necesitas al menos 5 bits de host (30 utilizables → prefijo /27).',
+          },
+          {
+            id: 'net-sub-2',
+            title: '1.2 Tabla inet filter en nftables',
+            content: 'Acepta primero tráfico established/related y limita el acceso SSH por subred administrativa.',
+          },
+        ],
+        keySteps: [
+          'Ordena los segmentos de mayor a menor demanda de hosts.',
+          'Asigna dirección de red, rango útil y broadcast sin solapamientos.',
+          'Aplica reglas mínimas de exposición de puertos en el servicio.',
+        ],
+        formulaOrCode: `table inet filter {
+  chain input {
+    type filter hook input priority 0; policy drop;
+    ct state established,related accept
+    tcp dport 22 ip saddr 10.20.0.0/27 accept
+  }
+}`,
+        exercise: 'Verifica el acoplamiento limpio de políticas de red e I/O en el panel de arquitectura.',
+        exercises: [
+          {
+            id: 'net-ex-1',
+            question: '¿Qué prefijo CIDR ofrece exactamente 30 direcciones IP útiles para hosts?',
+            options: ['/26 (62 útiles)', '/27 (30 útiles)', '/28 (14 útiles)'],
+            correctIndex: 1,
+            explanation: 'Un /27 deja 5 bits de host: 2^5 - 2 = 30 direcciones asignables.',
+          },
+        ],
+        labKind: 'architecture',
+        labGoal: 'Alinea contratos de configuración, capa de servicios de red y UI reactiva.',
+        labHint: 'Separa la validación de reglas en services/ antes de exponer estado.',
+      },
+    ],
+    questions: [
+      { prompt: '¿Por qué ordenamos los bloques de mayor a menor en VLSM?', options: ['Por estética del documento', 'Para evitar fragmentación y solapamiento de rangos IP', 'Porque TCP lo exige en capa 4'], answer: 1, explanation: 'Asignar primero las subredes más grandes respeta los límites binarios naturales.' },
+    ],
+  },
+  'sql-cloud': {
+    lessons: [
+      {
+        id: 'sql-rls',
+        title: 'Índices PostgreSQL, transacciones ACID y políticas RLS',
+        summary: 'Protege datos multi-inquilino desde el motor relacional y acelera consultas.',
+        minutes: 9,
+        videoTitle: 'Clase 1: Row Level Security (RLS) y planes EXPLAIN ANALYZE',
+        videoDuration: '07:50',
+        reading: [
+          'Row Level Security en PostgreSQL evalúa políticas por cada fila directamente en el motor de base de datos, impidiendo fugas entre estudiantes o docentes aunque cambie el cliente.',
+          'Combinar llaves foráneas indexadas (B-Tree) con EXPLAIN ANALYZE evita sequential scans costosos cuando las tablas crecen.',
+        ],
+        sublessons: [
+          {
+            id: 'sql-sub-1',
+            title: '1.1 Índices en llaves foráneas',
+            content: 'PostgreSQL crea índice para PRIMARY KEY y UNIQUE, pero las columnas FOREIGN KEY requieren CREATE INDEX explícito.',
+          },
+          {
+            id: 'sql-sub-2',
+            title: '1.2 Políticas USING vs WITH CHECK',
+            content: 'USING filtra lecturas y borrados; WITH CHECK valida nuevas filas insertadas o actualizadas.',
+          },
+        ],
+        keySteps: [
+          'Habilita RLS en cada tabla pública expuesta por Data API.',
+          'Indexa columnas usadas en políticas y JOINs frecuentes.',
+          'Verifica desacoplamiento del cliente Supabase en src/services/.',
+        ],
+        formulaOrCode: `CREATE INDEX idx_submissions_activity ON public.activity_submissions(activity_id);
+ALTER TABLE public.activity_submissions ENABLE ROW LEVEL SECURITY;`,
+        exercise: 'Valida la separación de capas entre contratos SQL, servicios Supabase y UI.',
+        exercises: [
+          {
+            id: 'sql-ex-1',
+            question: '¿Qué cláusula de una política RLS valida los datos al ejecutar INSERT o UPDATE?',
+            options: ['USING', 'WITH CHECK', 'ORDER BY'],
+            correctIndex: 1,
+            explanation: 'WITH CHECK verifica que la fila resultante cumpla la regla antes de confirmar escritura.',
+          },
+        ],
+        labKind: 'architecture',
+        labGoal: 'Confirma el aislamiento de consultas PostgreSQL dentro de services/.',
+        labHint: 'Las vistas React solo invocan métodos del servicio, nunca queries directas.',
+      },
+    ],
+    questions: [
+      { prompt: '¿Qué índice crea PostgreSQL automáticamente sin declaración manual?', options: ['Para todas las FOREIGN KEY', 'Para PRIMARY KEY y constraints UNIQUE', 'Para todas las columnas TEXT'], answer: 1, explanation: 'Las llaves foráneas deben indexarse manualmente para optimizar JOINs.' },
     ],
   },
 }

@@ -1,4 +1,13 @@
-export type AiDomainId = 'linear-algebra' | 'digital-circuits' | 'frameworks-arch' | 'algorithms'
+import type { DemoRole } from './auth'
+
+export type AiDomainId = 'linear-algebra' | 'digital-circuits' | 'frameworks-arch' | 'algorithms' | 'coordination-stats'
+
+export type AiOutputFormat = 'explanation' | 'guided-steps' | 'json'
+
+export interface AiTrainingSource {
+  label: string
+  examples: { input: string; output: string }[]
+}
 
 export type NeuronLayerId = 'input' | 'hidden1' | 'hidden2' | 'output'
 
@@ -58,6 +67,12 @@ export interface AiTrainedModel {
   createdAt: string
   enabledForStudents: boolean
   enabledForTeachers: boolean
+  isActive?: boolean
+  allowedRoles?: DemoRole[]
+  targetArea?: string
+  inputDataset?: string
+  outputFormat?: AiOutputFormat
+  examples?: AiTrainingSource['examples']
 }
 
 export interface AiDatasetSummary {
@@ -82,4 +97,6 @@ export interface AiControlState {
   config: AiGuardrailsConfig
   models: AiTrainedModel[]
   dataset: AiDatasetSummary
+  trainingSource?: AiTrainingSource
+  outputFormat?: AiOutputFormat
 }

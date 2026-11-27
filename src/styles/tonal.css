@@ -113,6 +113,136 @@
   border-color: #ddd6fe;
 }
 
+:root[data-palette='gta-vi'] {
+  --ivory: #f9eff7;
+  --ink: #1b102c;
+  --surf: #ff2e93;
+  --surface-l0: #f9eff7;
+  --surface-l1: #fff7fc;
+  --surface-l2: #f3e4f2;
+  --surface-l3: #ffffff;
+  --surface-l4: #fde7f5;
+  --border-tonal: #ead3e9;
+  --border-tonal-strong: #d8b4db;
+  --border-input: #cfa3d3;
+  --accent-fill: #d91b77;
+  --accent-hover: #be1466;
+  --accent-pressed: #9b0f52;
+  --accent-soft: #ffe4f2;
+  --accent-soft-border: #f8b4d8;
+  --accent-soft-ink: #b81163;
+}
+
+:root[data-palette='gta-vi'] .theme-dark {
+  --surface-l0: #140b22;
+  --surface-l1: #1b102c;
+  --surface-l2: #25173c;
+  --surface-l3: #311f4f;
+  --surface-l4: #3e2862;
+  --border-tonal: #3c265e;
+  --border-tonal-strong: #533682;
+  --text-primary: #fff3fb;
+  --text-muted: #d3b8e8;
+  --accent-fill: #ff2e93;
+  --accent-hover: #ff52a7;
+  --accent-pressed: #d91b77;
+  --accent-ink: #140b22;
+  --accent-soft: color-mix(in srgb, #ff2e93 18%, var(--surface-l2));
+  --accent-soft-border: color-mix(in srgb, #ff2e93 40%, var(--border-tonal));
+  --accent-soft-ink: #ff7dc0;
+}
+
+:root[data-palette='minecraft'] {
+  --ivory: #edf2e8;
+  --ink: #23201b;
+  --surf: #2fb84d;
+  --surface-l0: #edf2e8;
+  --surface-l1: #f7faf3;
+  --surface-l2: #e3ebdc;
+  --surface-l3: #ffffff;
+  --surface-l4: #e0f2e4;
+  --border-tonal: #ccd8c1;
+  --border-tonal-strong: #b4c7a5;
+  --border-input: #9eb68f;
+  --accent-fill: #248a3b;
+  --accent-hover: #1d7330;
+  --accent-pressed: #165a25;
+  --accent-soft: #e2f6e6;
+  --accent-soft-border: #a7deb2;
+  --accent-soft-ink: #196b2b;
+}
+
+:root[data-palette='minecraft'] .theme-dark {
+  --surface-l0: #1a1814;
+  --surface-l1: #23201b;
+  --surface-l2: #2f2b24;
+  --surface-l3: #3b362e;
+  --surface-l4: #474238;
+  --border-tonal: #3f3a31;
+  --border-tonal-strong: #575044;
+  --text-primary: #f3f7ee;
+  --text-muted: #b7c2b0;
+  --accent-fill: #39d353;
+  --accent-hover: #53df6b;
+  --accent-pressed: #26a641;
+  --accent-ink: #111b12;
+  --accent-soft: color-mix(in srgb, #39d353 16%, var(--surface-l2));
+  --accent-soft-border: color-mix(in srgb, #39d353 36%, var(--border-tonal));
+  --accent-soft-ink: #79eb8d;
+}
+
+:root[data-palette='tokyo-night'] {
+  color-scheme: dark;
+  --ivory: #c0caf5;
+  --ink: #1a1b26;
+  --surf: #7aa2f7;
+  --surface-l0: #16161e;
+  --surface-l1: #1a1b26;
+  --surface-l2: #24283b;
+  --surface-l3: #292e42;
+  --surface-l4: #333952;
+  --surface-l1-glass: color-mix(in srgb, #1a1b26 88%, transparent);
+  --border-tonal: #2f3549;
+  --border-tonal-strong: #414868;
+  --border-input: #414868;
+  --surface-focus: #292e42;
+  --border-focus: #7aa2f7;
+  --text-primary: #c0caf5;
+  --text-muted: #9aa5ce;
+  --accent-fill: #7aa2f7;
+  --accent-hover: #89b4fa;
+  --accent-pressed: #5d87e6;
+  --accent-ink: #15161e;
+  --accent-soft: color-mix(in srgb, #7aa2f7 16%, #24283b);
+  --accent-soft-border: color-mix(in srgb, #7aa2f7 34%, #2f3549);
+  --accent-soft-ink: #a9c4ff;
+  --danger-bg: color-mix(in srgb, #f7768e 16%, #24283b);
+  --danger-border: color-mix(in srgb, #f7768e 36%, #2f3549);
+  --danger-ink: #ff9db0;
+}
+
+:root[data-palette='tokyo-night'] .p-sidebar,
+:root[data-palette='tokyo-night'] .p-feature,
+:root[data-palette='tokyo-night'] .theme-dark {
+  color-scheme: dark;
+  --surface-l0: #13141c;
+  --surface-l1: #16161e;
+  --surface-l2: #1f2335;
+  --surface-l3: #292e42;
+  --surface-l4: #343b58;
+  --border-tonal: #292e42;
+  --border-tonal-strong: #3b4261;
+  --text-primary: #c0caf5;
+  --text-muted: #8b95bf;
+  --accent-fill: #7aa2f7;
+  --accent-hover: #8fb4ff;
+  --accent-pressed: #5e89e6;
+  --accent-ink: #13141c;
+  --accent-soft: color-mix(in srgb, #bb9af7 16%, #1f2335);
+  --accent-soft-border: color-mix(in srgb, #bb9af7 34%, #292e42);
+  --accent-soft-ink: #bb9af7;
+}
+
 .theme-dark {
   color-scheme: dark;
   --surface-l0: var(--ink);

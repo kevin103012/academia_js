@@ -1,12 +1,21 @@
 import { useState, type FormEvent } from 'react'
-import { BookOpen, Check, GraduationCap, Power, ShieldCheck } from 'lucide-react'
+import { Check, ShieldCheck } from 'lucide-react'
 import type { AiGuardrailsConfig, AiTrainedModel } from '../../types/ai'
+import type { DemoRole } from '../../types/auth'
+import { rolesForModel } from '../../services/tutor/tutorService'
 
 interface ModelAccessSubmoduleProps {
   config: AiGuardrailsConfig
   models: AiTrainedModel[]
   onSaveConfig: (next: AiGuardrailsConfig) => void
-  onToggleRoleAccess: (modelId: string, role: 'student' | 'teacher') => void
+  onToggleRoleAccess: (modelId: string, role: DemoRole) => void
+}
+
+const roleLabels: Record<DemoRole, string> = {
+  student: 'Alumnos',
+  teacher: 'Docentes',
+  coordinator: 'Coordinación',
+  admin: 'Administración',
 }
 
 const policySwitches: {
@@ -29,7 +38,7 @@ const policySwitches: {
   {
     key: 'teacherGlobalEnabled',
     title: 'Habilitar copiloto de IA para Docentes',
-    description: 'Permite a docentes y coordinación usar modelos activos para preparar clases y analizar brechas.',
+    description: 'Habilita el Tutor de estudio para docentes.',
   },
   {
     key: 'stepByStepStudentMode',
@@ -68,7 +77,7 @@ export function ModelAccessSubmodule({
           <div>
             <h2 id="ai-role-matrix-heading">Control de activación por modelo entrenado</h2>
             <p className="p-meta">
-              Activa o apaga cada modelo especializado de forma independiente para Alumnos y para Docentes.
+              Define los perfiles que pueden usar cada modelo.
             </p>
           </div>
           <span className="p-badge tone-soft-accent">
@@ -94,26 +103,16 @@ export function ModelAccessSubmodule({
               </div>
 
               <div className="ai-role-toggles" role="group" aria-label={`Acceso de ${model.name}`}>
-                <button
-                  type="button"
-                  className={`ai-mini-btn ${model.enabledForStudents ? 'tone-soft-accent' : 'tone-pill'}`}
-                  aria-pressed={model.enabledForStudents}
-                  onClick={() => onToggleRoleAccess(model.id, 'student')}
-                >
-                  <GraduationCap size={15} aria-hidden="true" />
-                  <span>{model.enabledForStudents ? 'Activo para alumnos' : 'Apagado para alumnos'}</span>
-                  <Power size={13} aria-hidden="true" />
-                </button>
-                <button
-                  type="button"
-                  className={`ai-mini-btn ${model.enabledForTeachers ? 'tone-soft-accent' : 'tone-pill'}`}
-                  aria-pressed={model.enabledForTeachers}
-                  onClick={() => onToggleRoleAccess(model.id, 'teacher')}
-                >
-                  <BookOpen size={15} aria-hidden="true" />
-                  <span>{model.enabledForTeachers ? 'Activo para docentes' : 'Apagado para docentes'}</span>
-                  <Power size={13} aria-hidden="true" />
-                </button>
+                {(Object.entries(roleLabels) as [DemoRole, string][]).map(([role, title]) => {
+                  const allowed = rolesForModel(model).includes(role)
+                  return <button
+                    key={role}
+                    type="button"
+                    className={`ai-mini-btn ${allowed ? 'tone-soft-accent' : 'tone-pill'}`}
+                    aria-pressed={allowed}
+                    onClick={() => onToggleRoleAccess(model.id, role)}
+                  >{allowed && <Check size={14} aria-hidden="true" />}{title}</button>
+                })}
               </div>
             </article>
           ))}

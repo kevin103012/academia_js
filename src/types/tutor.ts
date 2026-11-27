@@ -7,6 +7,15 @@ export type TutorMessage = {
   role: TutorRole
   text: string
   helpful?: boolean
+  model?: string
+}
+
+export type TutorSession = {
+  id: string
+  title: string
+  domain: AiDomainId | 'auto'
+  updatedAt: string
+  messages: TutorMessage[]
 }
 
 export type TutorTopicIcon = 'science' | 'math' | 'reading' | 'algorithms'

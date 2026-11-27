@@ -7,6 +7,8 @@ export type CommunityMessage = {
   initials: string
   text: string
   sentAt: string
+  sentOn?: string
+  authorId?: string
   isOwn?: boolean
 }
 
@@ -22,6 +24,13 @@ export type CommunityGroup = {
   mentorName: string
   pinnedNote: string
   joined: boolean
+  joinedAt?: string
+  groupKind?: 'study' | 'course' | 'general'
+  courseId?: string
+  periodId?: string
+  academicBlock?: string
+  assignedTeacherId?: string
+  createdBy?: string
   messages: CommunityMessage[]
 }
 

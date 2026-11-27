@@ -1,11 +1,15 @@
 import { useState } from 'react'
-import { LogOut, MessageSquare, Search, UserPlus, Users } from 'lucide-react'
+import { LogOut, MessageSquare, Pencil, Search, Trash2, UserPlus, Users } from 'lucide-react'
 import type { CommunityGroup } from '../../types/community'
 import { courseCategories, type CourseCategoryId } from '../../types/workspace'
 import { normalizeSearchText } from '../../utils/text'
 
 interface DiscoverCommunitiesSubmoduleProps {
   groups: CommunityGroup[]
+  busy: boolean
+  canEdit: (group: CommunityGroup) => boolean
+  onEdit: (group: CommunityGroup) => void
+  onDelete?: (group: CommunityGroup) => void
   onJoinGroup: (groupId: string) => void
   onLeaveGroup: (groupId: string) => void
   onOpenChat: (groupId: string) => void
@@ -13,6 +17,10 @@ interface DiscoverCommunitiesSubmoduleProps {
 
 export function DiscoverCommunitiesSubmodule({
   groups,
+  busy,
+  canEdit,
+  onEdit,
+  onDelete,
   onJoinGroup,
   onLeaveGroup,
   onOpenChat,
@@ -106,9 +114,7 @@ export function DiscoverCommunitiesSubmodule({
                   <span className="p-badge tone-soft-accent">
                     {courseCategories.find((c) => c.id === group.category)?.shortLabel ?? group.categoryLabel}
                   </span>
-                  <span className="comm-online">
-                    <i aria-hidden="true" /> {group.onlineCount} en línea
-                  </span>
+                  {group.groupKind === 'course' && <span className="p-meta">{[group.academicBlock, group.periodId].filter(Boolean).join(' · ')}</span>}
                 </div>
                 <h2 style={{ marginTop: 8 }}>{group.name}</h2>
                 <p style={{ marginTop: 4 }}>{group.description}</p>
@@ -124,8 +130,7 @@ export function DiscoverCommunitiesSubmodule({
 
               <div>
                 <div className="comm-meta-row">
-                  <span>{group.memberCount} miembros</span>
-                  <span>Mentor: {group.mentorName}</span>
+                  <span>{group.mentorName}</span>
                 </div>
                 <div className="comm-card-actions" style={{ marginTop: 10 }}>
                   {group.joined ? (
@@ -133,6 +138,7 @@ export function DiscoverCommunitiesSubmodule({
                       <button
                         type="button"
                         className="p-button tone-soft-accent"
+                        disabled={busy}
                         onClick={() => onOpenChat(group.id)}
                       >
                         <MessageSquare size={15} aria-hidden="true" /> Ir al chat
@@ -140,6 +146,7 @@ export function DiscoverCommunitiesSubmodule({
                       <button
                         type="button"
                         className="p-button p-button-short tone-pill"
+                        disabled={busy}
                         onClick={() => onLeaveGroup(group.id)}
                       >
                         <LogOut size={14} aria-hidden="true" /> Salir
@@ -149,11 +156,18 @@ export function DiscoverCommunitiesSubmodule({
                     <button
                       type="button"
                       className="p-button tone-accent"
+                      disabled={busy}
                       onClick={() => onJoinGroup(group.id)}
                     >
                       <UserPlus size={15} aria-hidden="true" /> Unirme al grupo
                     </button>
                   )}
+                  {canEdit(group) && <button type="button" className="p-button p-button-short" disabled={busy} onClick={() => onEdit(group)}>
+                    <Pencil size={14} aria-hidden="true" /> Editar
+                  </button>}
+                  {onDelete && <button type="button" className="p-button p-button-short" disabled={busy} onClick={() => onDelete(group)}>
+                    <Trash2 size={14} aria-hidden="true" /> Eliminar
+                  </button>}
                 </div>
               </div>
             </article>

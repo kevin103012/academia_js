@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
-import { Award, BookOpen, ChevronRight, Search } from 'lucide-react'
+import { Award, BookOpen, CalendarDays, ChevronLeft, ChevronRight, Clock3, Search } from 'lucide-react'
 import { SegmentedControl } from '../../components/ui/SegmentedControl'
 import { completedLessonCount, courseMaterial } from '../../services'
+import type { DemoUser } from '../../types/auth'
 import type { LearningEntry, LearningProgress } from '../../types/learning'
-import { courseCategories, type Course, type CourseCategoryId } from '../../types/workspace'
+import { courseCategories, type Commit, type Course, type CourseCategoryId, type Workspace } from '../../types/workspace'
 import { formatDate } from '../../utils/date'
 import { normalizeSearchText } from '../../utils/text'
 import { CourseDetail } from './CourseDetail'
@@ -11,6 +12,9 @@ import { courseIcon } from './learningHelpers'
 import '../../styles/learning.css'
 
 type LearningProps = {
+  user?: DemoUser
+  workspace?: Workspace
+  commit?: Commit
   courses: Course[]
   progress: LearningProgress
   onProgress: (courseId: string, entry: LearningEntry) => void
@@ -22,7 +26,8 @@ type LearningProps = {
 
 type Collection = 'catalog' | 'enrolled' | 'certificates'
 
-const blankProgress: LearningEntry = { enrolled: false, lessons: [] }
+const COURSES_PER_PAGE = 7
+const blankProgress: LearningEntry = { enrolled: false, lessons: [], watchedVideos: [] }
 const collections: { value: Collection; label: string }[] = [
   { value: 'catalog', label: 'Todos los cursos' },
   { value: 'enrolled', label: 'Mis cursos' },
@@ -30,6 +35,9 @@ const collections: { value: Collection; label: string }[] = [
 ]
 
 export default function Learning({
+  user,
+  workspace,
+  commit,
   courses,
   progress,
   onProgress,
@@ -42,6 +50,7 @@ export default function Learning({
   const [collection, setCollection] = useState<Collection>('catalog')
   const [categoryFilter, setCategoryFilter] = useState<'all' | CourseCategoryId>('all')
   const [query, setQuery] = useState('')
+  const [currentPage, setCurrentPage] = useState(1)
   const activeId = selection.source === initialCourse ? selection.courseId : initialCourse
   const course = courses.find((item) => item.id === activeId)
   const catalogHeading = useRef<HTMLHeadingElement>(null)
@@ -54,10 +63,17 @@ export default function Learning({
     }
   }, [course])
 
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [collection, categoryFilter, query])
+
   if (course) {
     return (
       <CourseDetail
         key={course.id}
+        user={user}
+        workspace={workspace}
+        commit={commit}
         course={course}
         entry={canLearn ? progress[course.id] ?? blankProgress : blankProgress}
         canLearn={canLearn}
@@ -87,6 +103,19 @@ export default function Learning({
     return matchesCollection && matchesCategory && matchesQuery
   })
 
+  const totalPages = Math.max(1, Math.ceil(matching.length / COURSES_PER_PAGE))
+  const safePage = Math.min(currentPage, totalPages)
+  const startIdx = (safePage - 1) * COURSES_PER_PAGE
+  const paginatedCourses = matching.slice(startIdx, startIdx + COURSES_PER_PAGE)
+  const showAttendanceAverage = user?.role === 'coordinator' || user?.role === 'admin' || user?.role === 'teacher'
+
+  function courseAttendanceAverage(courseId: string): string | null {
+    const rows = (workspace?.attendance ?? []).filter((a) => a.courseId === courseId)
+    if (!rows.length) return null
+    const attended = rows.filter((a) => a.status === 'Presente' || a.status === 'Justificada').length
+    return `${Math.round((attended / rows.length) * 100)}%`
+  }
+
   return (
     <section className="learn-root" aria-labelledby="learn-catalog-heading">
       <header className="learn-header">
@@ -96,8 +125,8 @@ export default function Learning({
           </h1>
           <p>
             {canLearn
-              ? 'Filtra por categoría de ingeniería, entra al laboratorio Split-Screen y obtén tu constancia.'
-              : 'Explora las categorías tecnológicas, los cursos asignados y sus laboratorios.'}
+              ? 'Revisa horarios, fechas y método de evaluación antes de matricularte. Cada lección incluye video y ejercicios.'
+              : 'Explora los cursos, sus horarios, fechas de evaluación, promedio de asistencia y contenido editable.'}
           </p>
         </div>
         <div className="learn-toolbar">
@@ -186,57 +215,107 @@ export default function Learning({
           )}
         </div>
       )}
-      <ul className="learn-catalog">
-        {matching.map((item) => {
-          const Icon = courseIcon(item.id)
-          const entry = canLearn ? progress[item.id] : undefined
-          const lessons = courseMaterial(item.id).lessons
-          const completed = completedLessonCount(item.id, entry)
-          const categoryMeta = courseCategories.find((c) => c.id === item.category)
-          return (
-            <li key={item.id}>
-              <button
-                type="button"
-                className="learn-course-link"
-                onClick={() => setSelection({ courseId: item.id, source: initialCourse })}
-                aria-label={collection === 'certificates' ? `Ver certificado de ${item.name}` : `Abrir ${item.name}`}
-              >
-                <span className={`learn-course-icon learn-tone-${item.color}`}>
-                  <Icon aria-hidden="true" size={24} strokeWidth={1.65} />
-                </span>
-                <span className="learn-course-text">
-                  <span className="learn-course-headline">
-                    <strong>{item.name}</strong>
-                    {categoryMeta && <span className="p-badge tone-soft-accent">{categoryMeta.shortLabel}</span>}
-                  </span>
-                  <span className="learn-course-description">{item.description}</span>
-                  <span className="learn-course-meta">
-                    {categoryMeta?.label ?? item.category} <span aria-hidden="true">·</span> {item.group}{' '}
-                    <span aria-hidden="true">·</span> {item.teacher}
-                  </span>
-                </span>
-                <span className="learn-course-status">
-                  {collection === 'certificates' && entry?.certifiedAt ? (
-                    <span>
-                      <Award aria-hidden="true" size={15} /> {formatDate(entry.certifiedAt)}
+
+      {paginatedCourses.length > 0 && (
+        <>
+          <ul className="learn-catalog">
+            {paginatedCourses.map((item) => {
+              const Icon = courseIcon(item.id)
+              const entry = canLearn ? progress[item.id] : undefined
+              const lessons = courseMaterial(item.id).lessons
+              const completed = completedLessonCount(item.id, entry)
+              const categoryMeta = courseCategories.find((c) => c.id === item.category)
+              const avgAtt = showAttendanceAverage ? courseAttendanceAverage(item.id) : null
+              return (
+                <li key={item.id}>
+                  <button
+                    type="button"
+                    className="learn-course-link"
+                    onClick={() => setSelection({ courseId: item.id, source: initialCourse })}
+                    aria-label={collection === 'certificates' ? `Ver certificado de ${item.name}` : `Abrir ${item.name}`}
+                  >
+                    <span className={`learn-course-icon learn-tone-${item.color}`}>
+                      <Icon aria-hidden="true" size={24} strokeWidth={1.65} />
                     </span>
-                  ) : entry?.enrolled ? (
-                    <>
-                      <span>
-                        {completed} de {lessons.length} lecciones
+                    <span className="learn-course-text">
+                      <span className="learn-course-headline">
+                        <strong>{item.name}</strong>
+                        {categoryMeta && <span className="p-badge tone-soft-accent">{categoryMeta.shortLabel}</span>}
+                        {item.durationWeeks && <span className="p-badge">{item.durationWeeks} sem</span>}
+                        {avgAtt && <span className="p-badge">Asistencia {avgAtt}</span>}
                       </span>
-                      <progress value={completed} max={lessons.length} aria-label={`Progreso de ${item.name}`} />
-                    </>
-                  ) : (
-                    <span>{lessons.length} lecciones</span>
-                  )}
-                </span>
-                <ChevronRight className="learn-catalog-arrow" aria-hidden="true" size={19} />
-              </button>
-            </li>
-          )
-        })}
-      </ul>
+                      <span className="learn-course-description">{item.description}</span>
+                      <span className="learn-course-meta">
+                        <CalendarDays size={13} aria-hidden="true" />{' '}
+                        {item.startDate && item.endDate
+                          ? `${formatDate(item.startDate)} — ${formatDate(item.endDate)}`
+                          : 'Periodo 2026-II'}{' '}
+                        <span aria-hidden="true">·</span> <Clock3 size={13} aria-hidden="true" />{' '}
+                        {item.scheduleSummary ?? 'Horario por confirmar'} <span aria-hidden="true">·</span>{' '}
+                        {item.group} <span aria-hidden="true">·</span> {item.teacher}
+                      </span>
+                    </span>
+                    <span className="learn-course-status">
+                      {collection === 'certificates' && entry?.certifiedAt ? (
+                        <span>
+                          <Award aria-hidden="true" size={15} /> {formatDate(entry.certifiedAt)}
+                        </span>
+                      ) : entry?.enrolled ? (
+                        <>
+                          <span>
+                            {completed} de {lessons.length} lecciones
+                          </span>
+                          <progress value={completed} max={lessons.length} aria-label={`Progreso de ${item.name}`} />
+                        </>
+                      ) : (
+                        <span>{lessons.length} {lessons.length === 1 ? 'lección' : 'lecciones'} · Ver info</span>
+                      )}
+                    </span>
+                    <ChevronRight className="learn-catalog-arrow" aria-hidden="true" size={19} />
+                  </button>
+                </li>
+              )
+            })}
+          </ul>
+
+          <nav className="l-pagination-bar" aria-label="Paginación de cursos">
+            <span className="l-pagination-info">
+              Mostrando {startIdx + 1}–{Math.min(startIdx + COURSES_PER_PAGE, matching.length)} de {matching.length} cursos (máx. {COURSES_PER_PAGE} por página)
+            </span>
+            {totalPages > 1 && (
+              <div className="l-pagination-controls">
+                <button
+                  type="button"
+                  className="ai-mini-btn tone-pill"
+                  disabled={safePage <= 1}
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                >
+                  <ChevronLeft size={15} aria-hidden="true" /> Anterior
+                </button>
+                {Array.from({ length: totalPages }, (_, index) => index + 1).map((pageNum) => (
+                  <button
+                    key={pageNum}
+                    type="button"
+                    className={`learn-step-tab ${safePage === pageNum ? 'tone-accent' : 'tone-pill'}`}
+                    aria-current={safePage === pageNum ? 'page' : undefined}
+                    onClick={() => setCurrentPage(pageNum)}
+                  >
+                    {pageNum}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  className="ai-mini-btn tone-pill"
+                  disabled={safePage >= totalPages}
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                >
+                  Siguiente <ChevronRight size={15} aria-hidden="true" />
+                </button>
+              </div>
+            )}
+          </nav>
+        </>
+      )}
     </section>
   )
 }

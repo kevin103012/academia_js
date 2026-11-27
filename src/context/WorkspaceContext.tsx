@@ -1,5 +1,6 @@
-import { createContext, useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { createInitialWorkspace } from '../data/workspaceSeed'
+import { WorkspaceContext } from '../hooks/useWorkspace'
 import { workspaceService } from '../services'
 import type { Commit, Workspace } from '../types/workspace'
 import { dateKey } from '../utils/date'
@@ -8,12 +9,11 @@ import { createId } from '../utils/id'
 export interface WorkspaceContextValue {
   workspace: Workspace
   loaded: boolean
+  loadError: boolean
   storageError: boolean
   setWorkspace: (updater: Workspace | ((current: Workspace) => Workspace)) => void
   commit: Commit
 }
-
-export const WorkspaceContext = createContext<WorkspaceContextValue | null>(null)
 
 interface WorkspaceProviderProps {
   actorName: string
@@ -24,8 +24,10 @@ interface WorkspaceProviderProps {
 export function WorkspaceProvider({ actorName, onSaved, children }: WorkspaceProviderProps) {
   const [workspace, setWorkspaceState] = useState<Workspace>(createInitialWorkspace)
   const [loaded, setLoaded] = useState(false)
+  const [loadError, setLoadError] = useState(false)
   const [storageError, setStorageError] = useState(false)
   const shouldPersistRef = useRef(false)
+  const saveQueue = useRef<Promise<unknown>>(Promise.resolve())
 
   useEffect(() => {
     let active = true
@@ -37,7 +39,7 @@ export function WorkspaceProvider({ actorName, onSaved, children }: WorkspacePro
         setLoaded(true)
       })
       .catch(() => {
-        if (active) setLoaded(true)
+        if (active) setLoadError(true)
       })
     return () => { active = false }
   }, [])
@@ -45,15 +47,17 @@ export function WorkspaceProvider({ actorName, onSaved, children }: WorkspacePro
   useEffect(() => {
     if (!loaded || !shouldPersistRef.current) return
     let active = true
-    workspaceService.save(workspace)
+    saveQueue.current = saveQueue.current.catch(() => undefined).then(() => workspaceService.save(workspace))
       .then((saved) => {
-        if (active) setStorageError(!saved)
+        if (!active) return
+        setStorageError(!saved)
+        if (saved) onSaved?.()
       })
       .catch(() => {
         if (active) setStorageError(true)
       })
     return () => { active = false }
-  }, [workspace, loaded])
+  }, [workspace, loaded, onSaved])
 
   const setWorkspace = useCallback((updater: Workspace | ((current: Workspace) => Workspace)) => {
     shouldPersistRef.current = true
@@ -66,11 +70,10 @@ export function WorkspaceProvider({ actorName, onSaved, children }: WorkspacePro
       const updated = update(current)
       return { ...updated, audit: [record, ...updated.audit].slice(0, 200) }
     })
-    onSaved?.()
-  }, [actorName, onSaved, setWorkspace])
+  }, [actorName, setWorkspace])
 
   return (
-    <WorkspaceContext.Provider value={{ workspace, loaded, storageError, setWorkspace, commit }}>
+    <WorkspaceContext.Provider value={{ workspace, loaded, loadError, storageError, setWorkspace, commit }}>
       {children}
     </WorkspaceContext.Provider>
   )

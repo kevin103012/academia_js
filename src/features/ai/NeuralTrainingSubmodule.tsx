@@ -12,10 +12,14 @@ import {
   TrendingDown,
 } from 'lucide-react'
 import { aiDomains } from '../../data/aiSeed'
-import type { AiControlState, AiDomainId, NeuronLayerId, NeuronNode, TrainingHyperparams } from '../../types/ai'
+import { aiOutputFormats, parseTrainingSource, trainingSourceFor } from '../../data/aiTrainingSources'
+import type { AiControlState, AiDomainId, AiOutputFormat, AiTrainingSource, NeuronLayerId, NeuronNode, TrainingHyperparams } from '../../types/ai'
 
 interface NeuralTrainingSubmoduleProps {
   state: AiControlState
+  activeLayer?: NeuronLayerId
+  onChangeSource: (source?: AiTrainingSource) => void
+  onChangeOutputFormat: (format: AiOutputFormat) => void
   onChangeDomain: (domain: AiDomainId) => void
   onChangeModelName: (name: string) => void
   onToggleNeuron: (neuronId: string) => void
@@ -69,6 +73,9 @@ function buildLossCurvePoints(values: number[], width: number, height: number, m
 
 export function NeuralTrainingSubmodule({
   state,
+  activeLayer,
+  onChangeSource,
+  onChangeOutputFormat,
   onChangeDomain,
   onChangeModelName,
   onToggleNeuron,
@@ -80,6 +87,23 @@ export function NeuralTrainingSubmodule({
   onSaveTrainedModel,
 }: NeuralTrainingSubmoduleProps) {
   const [selectedId, setSelectedId] = useState<string>(() => state.neurons[0]?.id ?? '')
+  const [sourceError, setSourceError] = useState('')
+  const [readingFile, setReadingFile] = useState(false)
+  const source = state.trainingSource ?? trainingSourceFor(state.selectedDomain)
+
+  async function importSource(file?: File) {
+    if (!file) return
+    setReadingFile(true)
+    setSourceError('')
+    try {
+      if (file.size > 256 * 1024) throw new Error('El archivo debe pesar hasta 256 KB.')
+      onChangeSource(parseTrainingSource(file.name, await file.text()))
+    } catch (error) {
+      setSourceError(error instanceof SyntaxError ? 'El archivo debe ser un JSON válido.' : (error as Error).message)
+    } finally {
+      setReadingFile(false)
+    }
+  }
 
   const selectedNeuron: NeuronNode | undefined =
     state.neurons.find((node) => node.id === selectedId) ?? state.neurons[0]
@@ -111,7 +135,7 @@ export function NeuralTrainingSubmodule({
   }, [neuronsByLayer])
 
   const synapses = useMemo(() => {
-    const edges: { id: string; d: string; weightWidth: number; active: boolean }[] = []
+    const edges: { id: string; d: string; weightWidth: number; active: boolean; target: NeuronLayerId }[] = []
     for (let i = 0; i < neuronsByLayer.length - 1; i++) {
       const fromLayer = neuronsByLayer[i]
       const toLayer = neuronsByLayer[i + 1]
@@ -129,6 +153,7 @@ export function NeuralTrainingSubmodule({
             d: `M ${p1.x},${p1.y} C ${midX},${p1.y} ${midX},${p2.y} ${p2.x},${p2.y}`,
             weightWidth,
             active: source.enabled && target.enabled,
+            target: target.layer,
           })
         }
       }
@@ -326,7 +351,7 @@ export function NeuralTrainingSubmodule({
                   className={
                     !edge.active
                       ? 'ai-synapse ai-synapse--off'
-                      : state.status === 'training'
+                        : edge.target === activeLayer
                         ? 'ai-synapse ai-synapse--training'
                         : 'ai-synapse'
                   }
@@ -339,6 +364,7 @@ export function NeuralTrainingSubmodule({
                   <g
                     key={node.id}
                     className="ai-node-group"
+                    data-flowing={node.enabled && node.layer === activeLayer ? true : undefined}
                     role="button"
                     tabIndex={0}
                     aria-label={`${node.label}, ${node.enabled ? 'activa' : 'apagada'}`}
@@ -379,7 +405,7 @@ export function NeuralTrainingSubmodule({
 
           <div className="ai-layers-grid" aria-label="Control por capa neuronal">
             {neuronsByLayer.map((layer) => (
-              <div className="ai-layer-col" key={layer.id}>
+              <div className="ai-layer-col" key={layer.id} data-flowing={layer.id === activeLayer ? true : undefined}>
                 <header>
                   <span>{layer.short}</span>
                   <span>
@@ -448,8 +474,8 @@ export function NeuralTrainingSubmodule({
           </section>
 
           <section className="p-card ai-panel" aria-labelledby="ai-specialty-heading">
-            <h2 id="ai-specialty-heading">Especialidad y guardado</h2>
-            <div className="ai-hyper-grid">
+            <h2 id="ai-specialty-heading">Datos y formato de respuesta</h2>
+            <fieldset className="ai-hyper-grid ai-source-fields" disabled={readingFile || state.status === 'training'}>
               <label>
                 Dominio de entrenamiento
                 <select
@@ -473,14 +499,45 @@ export function NeuralTrainingSubmodule({
                   onChange={(event) => onChangeModelName(event.target.value)}
                 />
               </label>
-            </div>
+              <label>
+                Archivo de ejemplos (JSON)
+                <input
+                  type="file"
+                  accept=".json,application/json"
+                  onChange={(event) => {
+                    const file = event.currentTarget.files?.[0]
+                    event.currentTarget.value = ''
+                    void importSource(file)
+                  }}
+                />
+              </label>
+              <label>
+                Formato de salida
+                <select
+                  value={state.outputFormat ?? 'explanation'}
+                  onChange={(event) => onChangeOutputFormat(event.target.value as AiOutputFormat)}
+                >
+                  {Object.entries(aiOutputFormats).map(([id, label]) => <option key={id} value={id}>{label}</option>)}
+                </select>
+              </label>
+            </fieldset>
             <div className="ai-domain-box">
-              <small>{activeDomainMeta.description}</small>
+              <strong>{source.label} · {source.examples.length} ejemplos</strong>
+              <p className="p-meta">Para importar otros datos, usa una lista de objetos con los campos input y output.</p>
+              {state.trainingSource && (
+                <button type="button" className="p-button p-button-short" disabled={state.status === 'training'} onClick={() => onChangeSource()}>
+                  Usar ejemplos del dominio
+                </button>
+              )}
+              {sourceError && <small role="alert">{sourceError}</small>}
             </div>
+            <p className="p-meta" role="status">
+              {activeLayer ? `Simulación · capa ${layerMeta.find((layer) => layer.id === activeLayer)?.short}` : 'Laboratorio de simulación'}
+            </p>
             <button
               type="button"
               className="p-button tone-accent"
-              disabled={Boolean(blockedLayer) || state.history.length === 0 || !state.draftModelName.trim()}
+              disabled={Boolean(blockedLayer) || state.status === 'training' || state.history.length === 0 || !state.draftModelName.trim()}
               onClick={onSaveTrainedModel}
             >
               <BookmarkPlus size={16} aria-hidden="true" /> Guardar en modelos entrenados

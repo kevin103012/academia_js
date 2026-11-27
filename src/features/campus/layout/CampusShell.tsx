@@ -1,17 +1,21 @@
 import { Bell, ChevronDown, ClipboardCheck, LogOut, Menu, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
+import { env } from '../../../config/env'
 import { LoadingMark } from '../../../components/ui/LoadingMark'
+import { SparksEmblem } from '../../../components/ui/SparksLogo'
 import { useAuth } from '../../../hooks/useAuth'
 import { useWorkspace } from '../../../hooks/useWorkspace'
 import { paths } from '../../../routes/paths'
 import type { LearningEntry } from '../../../types/learning'
+import { useCampusLanguage } from '../../../utils/i18n'
+import { visibleNotices } from '../../../utils/campusAccess'
 import { ActivityView } from '../../activities/ActivityView'
 import { AiControlView } from '../../ai/AiControlView'
-import { AttendanceView } from '../../community/AttendanceView'
 import { CalendarView } from '../../community/CalendarView'
 import { CommunityView } from '../../community/CommunityView'
 import { NoticesView } from '../../community/NoticesView'
+import { MessagingView } from '../../community/MessagingView'
 import Learning from '../../learning/Learning'
 import { ManageView } from '../../management/ManageView'
 import { ReportsView } from '../../management/ReportsView'
@@ -28,7 +32,8 @@ interface CampusShellProps {
 
 export function CampusShell({ notice, onNotify }: CampusShellProps) {
   const { user, signOut } = useAuth()
-  const { workspace, loaded, storageError, commit } = useWorkspace()
+  const { workspace, loaded, loadError, storageError, commit } = useWorkspace()
+  const { t } = useCampusLanguage()
   const navigateRouter = useNavigate()
   const [page, setPage] = useState<CampusPageId>(() =>
     window.location.hash === '#configuracion' ? 'settings' : 'home',
@@ -57,6 +62,13 @@ export function CampusShell({ notice, onNotify }: CampusShellProps) {
   }, [menuOpen])
 
   if (!user) return null
+  if (loadError) return <main className="campus-loading">
+    <div className="p-empty">
+      <p role="alert">No se pudieron cargar los datos del campus.</p>
+      <button type="button" className="p-button p-button-primary" onClick={() => window.location.reload()}>Reintentar</button>
+      <button type="button" className="p-button" onClick={handleLogout}>{t.signOut}</button>
+    </div>
+  </main>
   if (!loaded) {
     return (
       <main className="campus-loading">
@@ -126,18 +138,24 @@ export function CampusShell({ notice, onNotify }: CampusShellProps) {
   const renderCommunitySection = (section: CommunitySectionId) => (
     <CommunityView
       user={user}
+      workspace={workspace}
       section={section}
       onNavigateSection={(next) => navigate(next)}
-      commit={commit}
       notify={(message) => onNotify(message)}
     />
   )
 
   const content = {
-    home: <HomeView user={user} workspace={workspace} navigate={navigate} />,
+    home: <>
+      <HomeView user={user} workspace={workspace} navigate={navigate} />
+      {(user.role === 'coordinator' || user.role === 'admin') && <ReportsView workspace={workspace} compact />}
+    </>,
     learning: (
       <Learning
         key={courseSelection ?? 'catalog'}
+        user={user}
+        workspace={workspace}
+        commit={commit}
         courses={workspace.courses}
         progress={workspace.progress}
         onProgress={saveProgress}
@@ -148,10 +166,10 @@ export function CampusShell({ notice, onNotify }: CampusShellProps) {
       />
     ),
     activities: <ActivityView {...sharedProps} />,
-    attendance: <AttendanceView {...sharedProps} />,
     calendar: <CalendarView {...sharedProps} />,
     notices: <NoticesView {...sharedProps} />,
-    manage: <ManageView {...sharedProps} />,
+    messages: <MessagingView user={user} workspace={workspace} />,
+    manage: <ManageView {...sharedProps} notify={(message) => onNotify(message)} />,
     'ai-neural': renderAiSection('ai-neural'),
     'ai-trained': renderAiSection('ai-trained'),
     'ai-access': renderAiSection('ai-access'),
@@ -159,7 +177,7 @@ export function CampusShell({ notice, onNotify }: CampusShellProps) {
     'community-mine': renderCommunitySection('community-mine'),
     reports: <ReportsView workspace={workspace} />,
     tutor: <Tutor user={user} />,
-    settings: <SettingsView notify={(message) => onNotify(message)} />,
+    settings: <SettingsView user={user} workspace={workspace} notify={(message) => onNotify(message)} />,
   }[currentView.id]
 
   return (
@@ -169,7 +187,7 @@ export function CampusShell({ notice, onNotify }: CampusShellProps) {
       </a>
       <aside className={`p-sidebar theme-dark${menuOpen ? ' p-sidebar-open' : ''}`} id="portal-sidebar">
         <button className="p-brand" aria-label="Junior’s Sparks, volver a resumen" onClick={() => navigate('home')}>
-          <img src="/media/mark.png" alt="" width="43" height="43" />
+          <SparksEmblem size={38} />
           <span>
             Junior’s
             <br />
@@ -188,7 +206,7 @@ export function CampusShell({ notice, onNotify }: CampusShellProps) {
                   onClick={() => navigate(id)}
                 >
                   <Icon size={19} strokeWidth={1.8} aria-hidden="true" />
-                  <span>{label}</span>
+                  <span>{t.nav[id] ?? label}</span>
                 </button>
               )
             }
@@ -209,7 +227,7 @@ export function CampusShell({ notice, onNotify }: CampusShellProps) {
                   onClick={() => toggleGroup(group.id)}
                 >
                   <GroupIcon size={19} strokeWidth={1.8} aria-hidden="true" />
-                  <span>{group.label}</span>
+                  <span>{t.nav[group.id] ?? group.label}</span>
                   <ChevronDown size={16} className="p-nav-chevron" aria-hidden="true" />
                 </button>
                 <div className="p-nav-sub" id={group.id} hidden={!isOpen}>
@@ -224,7 +242,7 @@ export function CampusShell({ notice, onNotify }: CampusShellProps) {
                         onClick={() => navigate(child.id)}
                       >
                         <ChildIcon size={16} strokeWidth={1.8} aria-hidden="true" />
-                        <span>{child.label}</span>
+                        <span>{t.nav[child.id] ?? child.label}</span>
                       </button>
                     )
                   })}
@@ -234,11 +252,11 @@ export function CampusShell({ notice, onNotify }: CampusShellProps) {
           })}
         </nav>
         <div className="p-sidebar-bottom">
-          <div className="p-demo-label">
+          {!env.hasSupabase && <div className="p-demo-label">
             <span /> Entorno de prueba
-          </div>
+          </div>}
           <button className="p-nav p-sign-out" onClick={handleLogout}>
-            <LogOut size={19} aria-hidden="true" /> Cerrar sesión
+            <LogOut size={19} aria-hidden="true" /> {t.signOut}
           </button>
         </div>
       </aside>
@@ -256,7 +274,7 @@ export function CampusShell({ notice, onNotify }: CampusShellProps) {
             >
               {menuOpen ? <X size={22} /> : <Menu size={22} />}
             </button>
-            <span>Espacio académico</span>
+            <span>{t.workspaceBreadcrumb}</span>
             {currentView.groupLabel && (
               <>
                 <span className="p-breadcrumb-line" aria-hidden="true" />
@@ -264,12 +282,12 @@ export function CampusShell({ notice, onNotify }: CampusShellProps) {
               </>
             )}
             <span className="p-breadcrumb-line" aria-hidden="true" />
-            <strong>{currentView.fullLabel ?? currentView.label}</strong>
+            <strong>{t.nav[currentView.id] ?? currentView.fullLabel ?? currentView.label}</strong>
           </div>
           <div className="p-top-actions">
             <button className="p-icon-button p-notification" aria-label="Ver avisos" onClick={() => navigate('notices')}>
               <Bell size={20} aria-hidden="true" />
-              {workspace.notices.length > 0 && <span />}
+              {visibleNotices(user, workspace).length > 0 && <span />}
             </button>
             <div className="p-user">
               <span className="p-avatar" aria-hidden="true">
@@ -288,7 +306,7 @@ export function CampusShell({ notice, onNotify }: CampusShellProps) {
         <main className="p-main-content" id="portal-content" tabIndex={-1} ref={mainRef}>
           {storageError && (
             <p className="p-warning" role="alert">
-              El navegador no permite guardar los cambios. Conserva esta pestaña abierta para seguir trabajando.
+              No se pudieron guardar los cambios. Conserva esta pestaña abierta para evitar perderlos.
             </p>
           )}
           <div className="view-enter" key={currentView.id}>
