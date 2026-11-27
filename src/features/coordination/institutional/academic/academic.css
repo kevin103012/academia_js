@@ -1,0 +1,166 @@
+.ca {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+  color: var(--text-primary);
+}
+
+.ca :is(h1, h2, h3, p, dl, dd, ol, fieldset) { margin: 0; }
+.ca :is(h1, h2, h3) { text-wrap: balance; }
+.ca h1 { font-size: 1.65rem; line-height: 1.16; font-weight: 750; letter-spacing: -.03em; }
+.ca h2 { font-size: 1.12rem; font-weight: 740; letter-spacing: -.015em; }
+.ca h3 { font-size: .98rem; font-weight: 730; }
+.ca :is(p, td, th, dd, small) { overflow-wrap: anywhere; }
+.ca-muted { color: var(--text-muted); font-size: .84rem; line-height: 1.55; }
+.ca-header, .ca-section-heading, .ca-catalog-actions {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: .75rem 1rem;
+  flex-wrap: wrap;
+}
+.ca-header p { margin-top: .33rem; color: var(--text-muted); max-width: 66ch; font-size: .92rem; }
+.ca-header .p-button, .ca-catalog-actions .p-button { flex: 0 0 auto; }
+.ca fieldset { min-width: 0; padding: 0; border: 0; }
+.ca legend { font-size: .87rem; font-weight: 700; }
+.ca label:not(.ca-checks label) { display: grid; min-width: 0; gap: .27rem; font-size: .82rem; font-weight: 680; }
+.ca :is(select, input:not([type='checkbox']), textarea) {
+  width: 100%;
+  min-width: 0;
+  min-height: 2.65rem;
+  border: 1px solid var(--border-input);
+  border-radius: .65rem;
+  padding: .48rem .6rem;
+  background: var(--surface-l3);
+  color: var(--text-primary);
+  font: inherit;
+  font-weight: 500;
+}
+.ca :is(input[type='checkbox'], textarea) { accent-color: var(--accent-fill); }
+.ca :focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.ca fieldset.ca-filter {
+  display: grid;
+  gap: .65rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  padding: .7rem .85rem;
+  background: var(--surface-l2);
+  border: 1px solid var(--border-tonal);
+  border-radius: .85rem;
+}
+.ca-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.ca .ca-filter-note { grid-column: 1 / -1; }
+@media (min-width: 1180px) {
+  .ca fieldset.ca-filter-dates { grid-template-columns: minmax(0, 1fr) minmax(0, .8fr) minmax(0, 1.4fr) repeat(2, minmax(8.25rem, .8fr)); }
+}
+
+.ca-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1px;
+  background: var(--border-tonal);
+  overflow: hidden;
+  border: 1px solid var(--border-tonal);
+  border-radius: .9rem;
+}
+.ca-stats > div { display: grid; gap: .3rem; padding: .9rem .95rem; background: var(--surface-l3); }
+.ca-stats dt, .ca-course-meta dt { color: var(--text-muted); font-size: .82rem; }
+.ca-stats dd { font-size: 1.45rem; font-weight: 730; line-height: 1.15; letter-spacing: -.028em; font-variant-numeric: tabular-nums; }
+
+.ca-panel {
+  min-width: 0;
+  padding: .95rem;
+  border: 1px solid var(--border-tonal);
+  border-radius: .9rem;
+  background: var(--surface-l1);
+}
+.ca-charts { display: grid; grid-template-columns: minmax(0, 1.23fr) minmax(0, 1fr) minmax(0, 1fr); align-items: start; gap: .75rem; }
+.ca-chart .ca-muted { margin-top: .24rem; }
+.ca-chart .ca-chart-empty { margin-top: .85rem; }
+.ca .ca-bars { display: grid; gap: .75rem; margin-top: .8rem; padding: 0; list-style: none; }
+.ca-bars li div { display: flex; gap: .45rem; justify-content: space-between; align-items: baseline; font-size: .82rem; }
+.ca-bars li div > span { min-width: 0; overflow-wrap: anywhere; }
+.ca-bars li strong { flex: 0 0 auto; color: var(--accent-soft-ink); font-weight: 720; font-variant-numeric: tabular-nums; }
+.ca-track { height: .39rem; display: block; margin-top: .25rem; border-radius: var(--radius-pill); background: var(--surface-l2); }
+.ca-track > span { display: block; height: 100%; border-radius: inherit; background: var(--accent-fill); }
+.ca-empty, .ca-chart-empty { color: var(--text-muted); font-size: .88rem; }
+.ca-urgent, .ca-trend { display: grid; gap: .4rem; }
+.ca-urgent ul { display: grid; gap: .5rem; margin: .25rem 0 0; padding: 0; list-style: none; }
+.ca-urgent li { display: flex; align-items: center; justify-content: space-between; gap: .5rem; flex-wrap: wrap; color: var(--text-primary); }
+.ca-urgent li strong { color: var(--danger-ink); }
+.ca .ca-trend-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr)); gap: .55rem .75rem; list-style: none; padding: 0; }
+.ca-trend-list li { display: grid; grid-template-columns: 1fr auto; gap: .15rem .3rem; align-content: start; font-size: .81rem; }
+.ca-trend-list li > .ca-track { grid-column: 1 / -1; }
+
+.ca-report, .ca-preview, .ca-activity, .ca-course-form, .ca-detail, .ca-detail > section { display: grid; gap: .68rem; }
+.ca-checks { display: flex; gap: .35rem .5rem; flex-wrap: wrap; margin-top: .45rem; }
+.ca-checks label {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.5rem;
+  padding: .15rem .52rem;
+  gap: .4rem;
+  border: 1px solid var(--border-tonal);
+  border-radius: .55rem;
+  background: var(--surface-l3);
+  font-size: .81rem;
+  cursor: pointer;
+}
+.ca-checks label:has(input:checked) { border-color: var(--accent-soft-border); background: var(--accent-soft); color: var(--accent-soft-ink); }
+.ca-checks input { margin: 0; flex: 0 0 auto; width: 1rem; height: 1rem; accent-color: var(--accent-fill); }
+.ca-report-actions, .ca-actions { display: flex; gap: .65rem; align-items: end; flex-wrap: wrap; }
+.ca-report-actions select { min-width: 7rem; }
+.ca-error { color: var(--danger-ink); padding: .6rem; border-radius: .6rem; background: var(--danger-bg); }
+
+.ca-table-wrap { overflow: auto; min-width: 0; }
+.ca table { width: 100%; border-collapse: collapse; font-size: .85rem; text-align: start; font-variant-numeric: tabular-nums; }
+.ca th, .ca td { padding: .58rem .52rem; border-bottom: 1px solid var(--border-tonal); vertical-align: top; text-align: start; }
+.ca thead th { background: var(--surface-l2); color: var(--text-muted); font-weight: 690; white-space: nowrap; }
+.ca tbody th { font-weight: 690; min-width: 8rem; }
+.ca tbody tr:last-child :is(th, td) { border-bottom: 0; }
+.ca .ca-instructions { margin: .22rem 0 0; font-weight: 500; max-width: 50ch; white-space: pre-wrap; }
+.ca-section-heading h2 { display: flex; align-items: center; gap: .35rem; }
+.ca-tag { display: inline-block; margin-top: .18rem; padding: .08rem .44rem; border-radius: var(--radius-pill); background: var(--surface-l2); font-size: .74rem; }
+.ca-tag[data-status="duePassed"] { background: var(--danger-bg); color: var(--danger-ink); }
+.ca-tag[data-status="dueOpen"], .ca-created { color: var(--accent-soft-ink); }
+
+.ca-catalog { display: grid; grid-template-columns: minmax(11.5rem, 29%) minmax(0, 1fr); align-items: start; gap: .75rem; }
+.ca-course-list h2 { margin: 0 0 .45rem .1rem; }
+.ca-course-list button {
+  display: flex;
+  align-items: start;
+  width: 100%;
+  min-height: 2.75rem;
+  padding: .55rem .48rem;
+  gap: .42rem;
+  border-radius: .55rem;
+  text-align: start;
+  cursor: pointer;
+}
+.ca-course-list button svg { margin-top: .14rem; flex: 0 0 auto; }
+.ca-course-list button:hover { background: var(--surface-l2); }
+.ca-course-list button[aria-current="true"] { background: var(--accent-soft); color: var(--accent-soft-ink); }
+.ca-course-list button strong, .ca-course-list button small { display: block; }
+.ca-course-list button small { color: var(--text-muted); margin-top: .12rem; }
+.ca-form-grid, .ca-course-meta { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .7rem .9rem; }
+.ca-form-wide { grid-column: 1 / -1; }
+.ca-form-start { grid-column: 1; }
+.ca-course-meta { padding: .65rem 0; border-block: 1px solid var(--border-tonal); }
+.ca-course-meta dd { font-size: .88rem; font-weight: 650; }
+.ca-slot { display: block; }
+.ca-detail > section { padding-top: .43rem; }
+.ca .ca-lessons { list-style: decimal; padding-inline-start: 1.35rem; font-size: .9rem; }
+.ca-lessons li + li { margin-top: .2rem; }
+
+@media (max-width: 1100px) {
+  .ca-charts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 760px) {
+  .ca-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ca-charts, .ca-catalog { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 500px) {
+  .ca fieldset.ca-filter, .ca-form-grid { grid-template-columns: minmax(0, 1fr); }
+  .ca :is(select, input:not([type='checkbox']), textarea), .ca-checks label { min-height: 2.75rem; }
+  .ca th, .ca td { padding: .47rem .42rem; }
+}
+@media (prefers-reduced-motion: reduce) { .ca * { scroll-behavior: auto; transition: none; } }
