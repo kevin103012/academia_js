@@ -5,6 +5,7 @@ import { LoadingMark } from '../../../components/ui/LoadingMark'
 import { useAuth } from '../../../hooks/useAuth'
 import { env } from '../../../config/env'
 import { useWorkspace } from '../../../hooks/useWorkspace'
+import { loadErrorMessage, saveErrorMessage } from '../../../context/workspacePersistence'
 import { paths } from '../../../routes/paths'
 import type { LearningEntry } from '../../../types/learning'
 import { ActivityView } from '../../activities/ActivityView'
@@ -29,7 +30,7 @@ interface CampusShellProps {
 
 export function CampusShell({ notice, onNotify }: CampusShellProps) {
   const { user, signOut } = useAuth()
-  const { workspace, loaded, storageError, commit } = useWorkspace()
+  const { workspace, loaded, loadError, storageError, retryLoad, commit } = useWorkspace()
   const navigateRouter = useNavigate()
   const [page, setPage] = useState<CampusPageId>(() =>
     window.location.hash === '#configuracion' ? 'settings' : 'home',
@@ -288,11 +289,18 @@ export function CampusShell({ notice, onNotify }: CampusShellProps) {
           </div>
         </header>
         <main className="p-main-content" id="portal-content" tabIndex={-1} ref={mainRef}>
-          {storageError && (
+          {loadError ? (
+            <div className="p-warning" role="alert">
+              <span>{loadErrorMessage(env.useMocks)}</span>
+              <button type="button" className="p-warning-action" onClick={retryLoad}>
+                Reintentar carga
+              </button>
+            </div>
+          ) : storageError ? (
             <p className="p-warning" role="alert">
-              El navegador no permite guardar los cambios. Conserva esta pestaña abierta para seguir trabajando.
+              {saveErrorMessage()}
             </p>
-          )}
+          ) : null}
           <div className="view-enter" key={currentView.id}>
             {content}
           </div>

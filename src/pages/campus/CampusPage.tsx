@@ -4,6 +4,7 @@ import { CampusShell } from '../../features/campus/layout/CampusShell'
 import { useAuth } from '../../hooks/useAuth'
 import { useDocumentTitle } from '../../hooks/useDocumentTitle'
 import { CoordinatorCampus } from '../../features/coordination/institutional/CoordinatorCampus'
+import { savedNotice } from '../../context/workspacePersistence'
 import { env } from '../../config/env'
 
 export default function CampusPage() {
@@ -12,7 +13,7 @@ export default function CampusPage() {
   const [notice, setNotice] = useState<string>()
 
   const handleSaved = useCallback(() => {
-    setNotice('Cambios guardados en este navegador.')
+    setNotice(savedNotice(env.useMocks))
   }, [])
 
   if (!user) return null
